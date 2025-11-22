@@ -13,7 +13,7 @@ const Index = () => {
           <div className="flex items-center gap-3">
             <Trophy className="w-8 h-8 text-primary" />
             <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Brasileirão Survivor
+              Sobrevivente
             </span>
           </div>
           <div className="flex gap-4">
@@ -48,14 +48,14 @@ const Index = () => {
         <div className="container mx-auto px-4 z-10 text-center">
           <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
             <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-              Sobreviva às{" "}
+              Sobreviva{" "}
               <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-pulse">
-                38 Rodadas
+                a cada Rodada!
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-              Escolha o time vencedor a cada rodada do Brasileirão. Um erro e
-              você está fora. O último sobrevivente leva tudo!
+              Escolha o time vencedor a cada rodada das maiores Ligas Mundiais.
+              Um erro e você está fora. O último sobrevivente leva tudo!
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/admin/create-room">
@@ -75,20 +75,22 @@ const Index = () => {
                 <CardContent className="pt-6 text-center">
                   <Users className="w-12 h-12 mx-auto mb-4 text-primary" />
                   <h3 className="text-2xl font-bold mb-2">1.247</h3>
-                  <p className="text-muted-foreground">Jogadores Ativos</p>
+                  <p className="text-muted-foreground">Jogadores Cadastrados</p>
                 </CardContent>
               </Card>
               <Card className="bg-card/50 backdrop-blur border-primary/20 hover:border-primary/50 transition-all hover:scale-105">
                 <CardContent className="pt-6 text-center">
                   <Trophy className="w-12 h-12 mx-auto mb-4 text-accent" />
-                  <h3 className="text-2xl font-bold mb-2">R$ 150.000</h3>
-                  <p className="text-muted-foreground">Prêmio Acumulado</p>
+                  <h3 className="text-2xl font-bold mb-2">R$ 5.000</h3>
+                  <p className="text-muted-foreground">
+                    Até R$ 5.000 em prêmios
+                  </p>
                 </CardContent>
               </Card>
               <Card className="bg-card/50 backdrop-blur border-primary/20 hover:border-primary/50 transition-all hover:scale-105">
                 <CardContent className="pt-6 text-center">
                   <Target className="w-12 h-12 mx-auto mb-4 text-primary" />
-                  <h3 className="text-2xl font-bold mb-2">Rodada 8</h3>
+                  <h3 className="text-2xl font-bold mb-2">Rodadas</h3>
                   <p className="text-muted-foreground">Em Andamento</p>
                 </CardContent>
               </Card>
@@ -116,7 +118,7 @@ const Index = () => {
                 step: "01",
                 title: "Compre sua Linha",
                 description:
-                  "Adquira uma ou mais linhas (entradas) para participar do campeonato",
+                  "Adquira uma linha (entrada) para participar da rodada e sobreviva!",
               },
               {
                 icon: <Shield className="w-10 h-10" />,
@@ -137,7 +139,7 @@ const Index = () => {
                 step: "04",
                 title: "Ganhe o Prêmio",
                 description:
-                  "O último jogador sobrevivente leva todo o prêmio acumulado",
+                  "O último jogador sobrevivente leva todo o dinheiro!",
               },
             ].map((item, index) => (
               <div key={index} className="relative">
@@ -176,12 +178,12 @@ const Index = () => {
               {
                 title: "Compra de Linha",
                 description:
-                  "Cada jogador pode comprar uma ou mais linhas (entradas) para participar. Quanto mais linhas, mais chances de sobreviver!",
+                  "Cada jogador pode comprar uma linha (entrada) em cada sala para participar. Quanto mais salas entrar, mais chances de sobreviver!",
               },
               {
                 title: "Escolha por Rodada",
                 description:
-                  "A cada rodada do Brasileirão, você escolhe UM time que acredita que vai VENCER sua partida.",
+                  "A cada rodada de cada liga, você escolhe UM time que acredita que vai VENCER sua partida.",
               },
               {
                 title: "Condição de Vitória",
@@ -196,12 +198,12 @@ const Index = () => {
               {
                 title: "Restrição Importante",
                 description:
-                  "Você NÃO PODE escolher o mesmo time duas vezes durante todo o campeonato. Escolha com sabedoria!",
+                  "Você NÃO PODE escolher o mesmo time duas vezes enquanto for sobrevivendo a cada rodada. Escolha com sabedoria!",
               },
               {
                 title: "Prêmio Final",
                 description:
-                  "O último jogador que sobreviver até o final leva TODO o prêmio acumulado (valor total menos taxa administrativa).",
+                  "O último jogador que sobreviver até o final leva TODO o dinheiro acumulado (valor total menos taxa administrativa).",
               },
             ].map((rule, index) => (
               <Card
@@ -236,11 +238,11 @@ const Index = () => {
             <TrendingUp className="w-20 h-20 mx-auto text-primary animate-bounce" />
             <h2 className="text-5xl md:text-6xl font-bold">Prêmio Atual</h2>
             <div className="text-7xl md:text-8xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              R$ 150.000
+              R$ 1.000
             </div>
             <p className="text-xl text-muted-foreground">
-              O prêmio aumenta a cada nova linha comprada. Entre agora e aumente
-              suas chances!
+              O prêmio aumenta conforme o número de participantes. Entre agora
+              em uma sala e aumente suas chances!
             </p>
             <Button
               variant="hero"
@@ -263,7 +265,7 @@ const Index = () => {
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 Cadastre-se agora e comece sua jornada rumo ao prêmio máximo.
-                Teste sua sorte e conhecimento do futebol brasileiro!
+                Teste sua sorte e conhecimento do futebol mundial!
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Link to="/cadastro">
@@ -288,7 +290,7 @@ const Index = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
               <Trophy className="w-6 h-6 text-primary" />
-              <span className="text-xl font-bold">Brasileirão Survivor</span>
+              <span className="text-xl font-bold">Sobrevivente</span>
             </div>
             <div className="flex gap-8 text-sm text-muted-foreground">
               <a href="#" className="hover:text-primary transition-colors">
@@ -302,7 +304,7 @@ const Index = () => {
               </a>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 Brasileirão Survivor. Todos os direitos reservados.
+              © 2025 Sobrevivente. Todos os direitos reservados.
             </p>
           </div>
         </div>
