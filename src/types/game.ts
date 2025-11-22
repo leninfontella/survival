@@ -1,7 +1,16 @@
+export type League =
+  | "brasil"
+  | "espanha"
+  | "inglaterra"
+  | "alemanha"
+  | "italia"
+  | "franca";
+
 export interface Room {
   id: string;
   name: string;
-  status: 'waiting' | 'active' | 'finished';
+  league: League;
+  status: "waiting" | "active" | "finished";
   currentRound: number;
   totalRounds: number;
   minPlayers: number;
@@ -23,11 +32,12 @@ export interface Team {
   id: string;
   name: string;
   logo: string;
+  league: League;
 }
 
 export interface Round {
   number: number;
-  status: 'upcoming' | 'selecting' | 'playing' | 'finished';
+  status: "upcoming" | "selecting" | "playing" | "finished";
   deadline: Date;
   matches: Match[];
 }
@@ -36,7 +46,7 @@ export interface Match {
   id: string;
   homeTeam: Team;
   awayTeam: Team;
-  result?: 'home' | 'away' | 'draw';
+  result?: "home" | "away" | "draw";
   date: Date;
 }
 

@@ -7,6 +7,7 @@ import { GameProvider } from "@/contexts/GameContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
 import AdminCreateRoom from "./pages/AdminCreateRoom";
 import JoinRoom from "./pages/JoinRoom";
 import Room from "./pages/Room";
@@ -26,8 +27,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Signup />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin/create-room" element={<AdminCreateRoom />} />
-            <Route path="/join-room" element={<JoinRoom />} />
+            <Route path="/join-room/:roomId" element={<JoinRoom />} />
             <Route path="/room" element={<Room />} />
             <Route path="/room/select-team" element={<SelectTeam />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

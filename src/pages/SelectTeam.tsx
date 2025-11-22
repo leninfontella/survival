@@ -1,16 +1,17 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useGame } from '@/contexts/GameContext';
-import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Check, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useGame } from "@/contexts/GameContext";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, Check, X } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function SelectTeam() {
   const navigate = useNavigate();
-  const { currentRoom, currentPlayer, teams, selectTeam } = useGame();
+  const { currentRoom, currentPlayer, getTeamsByLeague, selectTeam } =
+    useGame();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
   if (!currentRoom || !currentPlayer) {
@@ -31,22 +32,26 @@ export default function SelectTeam() {
   const handleConfirm = () => {
     if (!selectedTeamId) {
       toast({
-        title: 'Selecione um time',
-        description: 'Você precisa escolher um time para continuar.',
-        variant: 'destructive',
+        title: "Selecione um time",
+        description: "Você precisa escolher um time para continuar.",
+        variant: "destructive",
       });
       return;
     }
 
     selectTeam(selectedTeamId);
     toast({
-      title: 'Time selecionado!',
-      description: 'Boa sorte nesta rodada!',
+      title: "Time selecionado!",
+      description: "Boa sorte nesta rodada!",
     });
-    navigate('/room');
+    navigate("/room");
   };
 
-  const isTeamUsed = (teamId: string) => currentPlayer.selectedTeams.includes(teamId);
+  const isTeamUsed = (teamId: string) =>
+    currentPlayer.selectedTeams.includes(teamId);
+
+  // Filter teams by current room's league
+  const availableTeams = getTeamsByLeague(currentRoom.league);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
@@ -66,7 +71,9 @@ export default function SelectTeam() {
                   Rodada {currentRoom.currentRound}
                 </CardTitle>
                 <p className="text-muted-foreground">
-                  Escolha o time que você acredita que irá <span className="text-primary font-semibold">VENCER</span> nesta rodada
+                  Escolha o time que você acredita que irá{" "}
+                  <span className="text-primary font-semibold">VENCER</span>{" "}
+                  nesta rodada
                 </p>
               </div>
             </CardHeader>
@@ -78,7 +85,7 @@ export default function SelectTeam() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {teams.map((team) => {
+                {availableTeams.map((team) => {
                   const used = isTeamUsed(team.id);
                   const selected = selectedTeamId === team.id;
 
@@ -89,8 +96,16 @@ export default function SelectTeam() {
                       disabled={used}
                       className={`
                         relative p-4 rounded-lg border-2 transition-all
-                        ${used ? 'opacity-40 cursor-not-allowed bg-muted' : 'cursor-pointer hover:scale-105'}
-                        ${selected ? 'border-primary bg-primary/10' : 'border-border bg-background/50'}
+                        ${
+                          used
+                            ? "opacity-40 cursor-not-allowed bg-muted"
+                            : "cursor-pointer hover:scale-105"
+                        }
+                        ${
+                          selected
+                            ? "border-primary bg-primary/10"
+                            : "border-border bg-background/50"
+                        }
                       `}
                     >
                       <div className="flex items-center justify-between">
@@ -99,7 +114,10 @@ export default function SelectTeam() {
                           <span className="font-semibold">{team.name}</span>
                         </div>
                         {used && (
-                          <Badge variant="destructive" className="flex items-center gap-1">
+                          <Badge
+                            variant="destructive"
+                            className="flex items-center gap-1"
+                          >
                             <X className="h-3 w-3" />
                             Usado
                           </Badge>
@@ -116,10 +134,17 @@ export default function SelectTeam() {
               </div>
 
               <div className="mt-6 p-4 rounded-lg bg-primary/10 border border-primary/20">
-                <h4 className="font-semibold text-primary mb-2">⚠️ Lembre-se:</h4>
+                <h4 className="font-semibold text-primary mb-2">
+                  ⚠️ Lembre-se:
+                </h4>
                 <ul className="space-y-1 text-sm">
-                  <li>• Você só pode escolher cada time UMA vez durante todo o campeonato</li>
-                  <li>• Se seu time VENCER, você avança para a próxima rodada</li>
+                  <li>
+                    • Você só pode escolher cada time UMA vez durante todo o
+                    campeonato
+                  </li>
+                  <li>
+                    • Se seu time VENCER, você avança para a próxima rodada
+                  </li>
                   <li>• Se seu time EMPATAR ou PERDER, você é eliminado</li>
                 </ul>
               </div>
@@ -148,9 +173,13 @@ export default function SelectTeam() {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {currentPlayer.selectedTeams.map((teamId) => {
-                    const team = teams.find(t => t.id === teamId);
+                    const team = availableTeams.find((t) => t.id === teamId);
                     return team ? (
-                      <Badge key={teamId} variant="secondary" className="text-sm">
+                      <Badge
+                        key={teamId}
+                        variant="secondary"
+                        className="text-sm"
+                      >
                         {team.logo} {team.name}
                       </Badge>
                     ) : null;

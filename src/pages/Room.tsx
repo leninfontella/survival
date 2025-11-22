@@ -1,10 +1,10 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useGame } from '@/contexts/GameContext';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Trophy, Play, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useGame } from "@/contexts/GameContext";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Users, Trophy, Play, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Room() {
   const navigate = useNavigate();
@@ -25,8 +25,10 @@ export default function Room() {
     );
   }
 
-  const activePlayers = players.filter(p => !p.isEliminated);
-  const canStart = players.length >= currentRoom.minPlayers && currentRoom.status === 'waiting';
+  const activePlayers = players.filter((p) => !p.isEliminated);
+  const canStart =
+    players.length >= currentRoom.minPlayers &&
+    currentRoom.status === "waiting";
   const isAdmin = !currentPlayer; // Simplified: if no currentPlayer, assume admin view
 
   const handleStart = () => {
@@ -34,16 +36,16 @@ export default function Room() {
   };
 
   const handleSelectTeam = () => {
-    navigate('/room/select-team');
+    navigate("/room/select-team");
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
       <div className="container mx-auto px-4 py-8">
-        <Link to="/">
+        <Link to="/dashboard">
           <Button variant="ghost" className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Sair da Sala
+            Voltar ao Dashboard
           </Button>
         </Link>
 
@@ -57,16 +59,31 @@ export default function Room() {
                     {currentRoom.name}
                   </CardTitle>
                   <div className="flex gap-2 mt-2">
-                    <Badge variant={currentRoom.status === 'active' ? 'default' : 'secondary'}>
-                      {currentRoom.status === 'waiting' ? 'Aguardando' : currentRoom.status === 'active' ? 'Em Andamento' : 'Finalizada'}
+                    <Badge
+                      variant={
+                        currentRoom.status === "active"
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {currentRoom.status === "waiting"
+                        ? "Aguardando"
+                        : currentRoom.status === "active"
+                        ? "Em Andamento"
+                        : "Finalizada"}
                     </Badge>
-                    {currentRoom.status === 'active' && (
-                      <Badge variant="outline">Rodada {currentRoom.currentRound}/{currentRoom.totalRounds}</Badge>
+                    {currentRoom.status === "active" && (
+                      <Badge variant="outline">
+                        Rodada {currentRoom.currentRound}/
+                        {currentRoom.totalRounds}
+                      </Badge>
                     )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Prêmio Total</div>
+                  <div className="text-sm text-muted-foreground">
+                    Prêmio Total
+                  </div>
                   <div className="text-3xl font-bold text-primary">
                     R$ {currentRoom.prizePool.toFixed(2)}
                   </div>
@@ -83,7 +100,9 @@ export default function Room() {
                   <Users className="h-8 w-8 text-primary" />
                   <div>
                     <div className="text-2xl font-bold">{players.length}</div>
-                    <div className="text-sm text-muted-foreground">Jogadores Inscritos</div>
+                    <div className="text-sm text-muted-foreground">
+                      Jogadores Inscritos
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -94,8 +113,12 @@ export default function Room() {
                 <div className="flex items-center gap-3">
                   <Trophy className="h-8 w-8 text-accent" />
                   <div>
-                    <div className="text-2xl font-bold">{activePlayers.length}</div>
-                    <div className="text-sm text-muted-foreground">Sobreviventes</div>
+                    <div className="text-2xl font-bold">
+                      {activePlayers.length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Sobreviventes
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -107,9 +130,13 @@ export default function Room() {
                   <Play className="h-8 w-8 text-glow" />
                   <div>
                     <div className="text-2xl font-bold">
-                      {currentRoom.status === 'active' ? currentRoom.currentRound : '-'}
+                      {currentRoom.status === "active"
+                        ? currentRoom.currentRound
+                        : "-"}
                     </div>
-                    <div className="text-sm text-muted-foreground">Rodada Atual</div>
+                    <div className="text-sm text-muted-foreground">
+                      Rodada Atual
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -117,14 +144,16 @@ export default function Room() {
           </div>
 
           {/* Actions */}
-          {currentRoom.status === 'waiting' && isAdmin && (
+          {currentRoom.status === "waiting" && isAdmin && (
             <Card className="border-primary/50 bg-primary/5">
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
                   <p className="text-muted-foreground">
                     {players.length < currentRoom.minPlayers
-                      ? `Aguardando mais ${currentRoom.minPlayers - players.length} jogador(es) para iniciar`
-                      : 'Número mínimo de jogadores atingido!'}
+                      ? `Aguardando mais ${
+                          currentRoom.minPlayers - players.length
+                        } jogador(es) para iniciar`
+                      : "Número mínimo de jogadores atingido!"}
                   </p>
                   <Button
                     size="lg"
@@ -140,23 +169,52 @@ export default function Room() {
             </Card>
           )}
 
-          {currentRoom.status === 'active' && currentPlayer && !currentPlayer.isEliminated && (
+          {currentRoom.status === "waiting" && !isAdmin && (
             <Card className="border-accent/50 bg-accent/5">
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
-                  <p className="text-lg font-semibold">Rodada {currentRoom.currentRound} - Escolha seu time!</p>
+                  <p className="text-muted-foreground">
+                    {players.length < currentRoom.minPlayers
+                      ? `Aguardando mais ${
+                          currentRoom.minPlayers - players.length
+                        } jogador(es) para iniciar`
+                      : "Número mínimo de jogadores atingido! Prepare-se!"}
+                  </p>
                   <Button
                     size="lg"
+                    disabled={!canStart}
                     onClick={handleSelectTeam}
                     className="w-full md:w-auto"
                   >
-                    Selecionar Time
-                    <ChevronRight className="ml-2 h-5 w-5" />
+                    <Trophy className="mr-2 h-5 w-5" />
+                    INICIAR SOBREVIVÊNCIA
                   </Button>
                 </div>
               </CardContent>
             </Card>
           )}
+
+          {currentRoom.status === "active" &&
+            currentPlayer &&
+            !currentPlayer.isEliminated && (
+              <Card className="border-accent/50 bg-accent/5">
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-4">
+                    <p className="text-lg font-semibold">
+                      Rodada {currentRoom.currentRound} - Escolha seu time!
+                    </p>
+                    <Button
+                      size="lg"
+                      onClick={handleSelectTeam}
+                      className="w-full md:w-auto"
+                    >
+                      Selecionar Time
+                      <ChevronRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
           {/* Players List */}
           <Card className="border-border/50 bg-card/50 backdrop-blur">
@@ -176,13 +234,27 @@ export default function Room() {
                       className="flex justify-between items-center p-3 rounded-lg bg-background/50"
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${player.isEliminated ? 'bg-destructive' : 'bg-primary'}`} />
-                        <span className={player.isEliminated ? 'line-through text-muted-foreground' : ''}>
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            player.isEliminated
+                              ? "bg-destructive"
+                              : "bg-primary"
+                          }`}
+                        />
+                        <span
+                          className={
+                            player.isEliminated
+                              ? "line-through text-muted-foreground"
+                              : ""
+                          }
+                        >
                           {player.name}
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="text-sm text-muted-foreground">{player.lines} linha(s)</span>
+                        <span className="text-sm text-muted-foreground">
+                          {player.lines} linha(s)
+                        </span>
                         {player.isEliminated ? (
                           <Badge variant="destructive">Eliminado</Badge>
                         ) : (
