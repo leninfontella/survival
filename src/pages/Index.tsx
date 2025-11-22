@@ -266,12 +266,16 @@ const Index = () => {
                 Teste sua sorte e conhecimento do futebol brasileiro!
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                <Button variant="hero" size="lg" className="min-w-[200px]">
-                  Criar Conta
-                </Button>
-                <Button variant="outline" size="lg" className="min-w-[200px]">
-                  Já Tenho Conta
-                </Button>
+                <Link to="/cadastro">
+                  <Button variant="hero" size="lg" className="min-w-[200px]">
+                    Criar Conta
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button variant="outline" size="lg" className="min-w-[200px]">
+                    Já Tenho Conta
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
