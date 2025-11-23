@@ -3,66 +3,41 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Users, Target, Zap, Shield, TrendingUp } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
-import { AuthDialog } from "@/components/AuthDialog";
+import { Navbar } from "@/components/Navbar";
 import { useState, useEffect } from "react";
+import { authAPI } from "@/services/api";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
-    null
-  );
 
   useEffect(() => {
-    // Verificar se o usuário está autenticado
-    const token = localStorage.getItem("auth_token");
-    setIsAuthenticated(!!token);
+    const checkAuth = () => {
+      setIsAuthenticated(authAPI.isAuthenticated());
+    };
+
+    checkAuth();
+
+    // Listener para mudanças no localStorage
+    const handleStorageChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   const handleProtectedAction = (path: string) => {
     if (isAuthenticated) {
       navigate(path);
     } else {
-      setPendingNavigation(path);
-      setAuthDialogOpen(true);
-    }
-  };
-
-  const handleAuthSuccess = () => {
-    setIsAuthenticated(true);
-    if (pendingNavigation) {
-      navigate(pendingNavigation);
-      setPendingNavigation(null);
+      navigate("/login");
     }
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Trophy className="w-8 h-8 text-primary" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Brasileirão Survivor
-            </span>
-          </div>
-          <div className="flex gap-4">
-            <Link to="/login">
-              <Button
-                variant="ghost"
-                className="text-foreground hover:text-primary"
-              >
-                Login
-              </Button>
-            </Link>
-            <Link to="/cadastro">
-              <Button variant="default">Cadastrar</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
@@ -346,12 +321,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-
-      <AuthDialog
-        open={authDialogOpen}
-        onOpenChange={setAuthDialogOpen}
-        onSuccess={handleAuthSuccess}
-      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,11 +8,11 @@ import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/services/api";
 
 const Login = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,22 +23,19 @@ const Login = () => {
 
       toast({
         title: "Login realizado!",
-        description: response.message || "Bem-vindo ao Brasileirão Survivor",
+        description: "Bem-vindo de volta ao Brasileirão Survivor",
       });
 
-      // Redirecionar para dashboard
       navigate("/dashboard");
-    } catch (error) {
-      console.error("Erro no login:", error);
+    } catch (error: unknown) {
+      console.error("Erro ao fazer login:", error);
 
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Verifique suas credenciais e tente novamente.";
-
+      const axiosError = error as AxiosError<{ message: string }>;
       toast({
-        title: "Erro no login",
-        description: errorMessage,
+        title: "Erro ao fazer login",
+        description:
+          axiosError.response?.data?.message ||
+          "Verifique suas credenciais e tente novamente.",
         variant: "destructive",
       });
     } finally {

@@ -7,18 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { useGame } from "@/hooks/useGame";
 import {
   Trophy,
-  Users,
   Clock,
   Play,
   Flag,
   Plus,
-  LogOut,
   Copy,
   Check,
   UserCircle,
 } from "lucide-react";
 import { Room } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";
+import { Navbar } from "@/components/Navbar";
 
 const leagueNames = {
   brasil: "🇧🇷 Brasileirão",
@@ -161,32 +160,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
-      {/* Header */}
-      <div className="border-b border-border/50 bg-card/30 backdrop-blur-lg sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Trophy className="w-8 h-8 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold">Dashboard</h1>
-                <p className="text-sm text-muted-foreground">
-                  Gerencie suas competições
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Link to="/">
-                <Button variant="ghost" size="sm">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sair
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Navbar />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 mt-20">
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <Link to="/admin/create-room">

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +8,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { authAPI } from "@/services/api";
 
 const Signup = () => {
-  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,6 +15,7 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const totalSteps = 3;
 
@@ -78,20 +77,21 @@ const Signup = () => {
 
       toast({
         title: "Cadastro realizado!",
-        description: response.message || "Bem-vindo ao Brasileirão Survivor",
+        description: "Bem-vindo ao Brasileirão Survivor",
       });
 
-      // Redirecionar para dashboard
       navigate("/dashboard");
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Erro no cadastro:", error);
 
-      const axiosError = error as AxiosError<{ message: string }>;
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Erro ao criar conta. Tente novamente.";
+
       toast({
-        title: "Erro no cadastro",
-        description:
-          axiosError.response?.data?.message ||
-          "Erro ao criar conta. Tente novamente.",
+        title: "Erro ao criar conta",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

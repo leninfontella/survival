@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { authAPI } from "@/services/api";
 
 // Validation schemas
 const emailSchema = z
@@ -142,19 +143,22 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
 
     setLoading(true);
 
-    // Simular autenticação
-    setTimeout(() => {
-      localStorage.setItem("auth_token", "mock_token");
-      localStorage.setItem("user_name", name || email.split("@")[0]);
+    try {
+      if (isLogin) {
+        // Login
+        const response = await authAPI.login({ email, password });
 
-      toast.success(
-        isLogin
-          ? "Login realizado com sucesso!"
-          : "Cadastro realizado com sucesso!",
-        {
+        toast.success("Login realizado com sucesso!", {
+          description: "Bem-vindo de volta ao Brasileirão Survivor!",
+        });
+      } else {
+        // Signup
+        const response = await authAPI.signup({ name, email, password });
+
+        toast.success("Cadastro realizado com sucesso!", {
           description: "Bem-vindo ao Brasileirão Survivor!",
-        }
-      );
+        });
+      }
 
       setLoading(false);
       setCurrentStep(1);
@@ -164,7 +168,20 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
       setName("");
       onSuccess();
       onOpenChange(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Erro na autenticação:", error);
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : (error as { response?: { data?: { message?: string } } })?.response
+              ?.data?.message || "Ocorreu um erro. Tente novamente.";
+
+      toast.error("Erro", {
+        description: errorMessage,
+      });
+      setLoading(false);
+    }
   };
 
   const switchMode = () => {
@@ -239,6 +256,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   required
                   className="bg-secondary/50 border-primary/20 focus:border-primary h-12"
                   autoFocus
+                  disabled={loading}
                 />
               </div>
 
@@ -258,6 +276,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="bg-secondary/50 border-primary/20 focus:border-primary h-12"
+                  disabled={loading}
                 />
               </div>
 
@@ -293,6 +312,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                       onChange={(e) => setName(e.target.value)}
                       className="bg-secondary/50 border-primary/20 focus:border-primary h-12"
                       autoFocus
+                      disabled={loading}
                     />
                   </div>
                   <Button
@@ -300,6 +320,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                     onClick={handleNext}
                     className="w-full h-12 text-lg font-semibold"
                     size="lg"
+                    disabled={loading}
                   >
                     Próximo
                     <ChevronRight className="w-4 h-4 ml-2" />
@@ -326,6 +347,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                       onChange={(e) => setEmail(e.target.value)}
                       className="bg-secondary/50 border-primary/20 focus:border-primary h-12"
                       autoFocus
+                      disabled={loading}
                     />
                   </div>
                   <div className="flex gap-3">
@@ -335,6 +357,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                       variant="outline"
                       size="lg"
                       className="w-full h-12"
+                      disabled={loading}
                     >
                       <ChevronLeft className="w-4 h-4 mr-2" />
                       Voltar
@@ -344,6 +367,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                       onClick={handleNext}
                       className="w-full h-12"
                       size="lg"
+                      disabled={loading}
                     >
                       Próximo
                       <ChevronRight className="w-4 h-4 ml-2" />
@@ -372,6 +396,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                       minLength={6}
                       className="bg-secondary/50 border-primary/20 focus:border-primary h-12"
                       autoFocus
+                      disabled={loading}
                     />
                   </div>
 
@@ -391,6 +416,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       minLength={6}
                       className="bg-secondary/50 border-primary/20 focus:border-primary h-12"
+                      disabled={loading}
                     />
                   </div>
 
@@ -401,6 +427,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
                       variant="outline"
                       size="lg"
                       className="w-full h-12"
+                      disabled={loading}
                     >
                       <ChevronLeft className="w-4 h-4 mr-2" />
                       Voltar
@@ -428,6 +455,7 @@ export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
               variant="link"
               className="text-primary hover:text-accent font-semibold"
               onClick={switchMode}
+              disabled={loading}
             >
               {isLogin ? "Cadastre-se aqui" : "Faça login aqui"}
             </Button>
