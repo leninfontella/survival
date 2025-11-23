@@ -15,6 +15,7 @@ import {
   LogOut,
   Copy,
   Check,
+  UserCircle,
 } from "lucide-react";
 import { Room } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +31,7 @@ const leagueNames = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { rooms } = useGame();
+  const { rooms, players } = useGame();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"waiting" | "active" | "finished">(
     "waiting"
@@ -51,6 +52,7 @@ export default function Dashboard() {
     const config = statusConfig[room.status];
     const Icon = config.icon;
     const shareLink = `${window.location.origin}/join-room/${room.id}`;
+    const roomPlayers = players.filter((p) => p.roomId === room.id);
 
     const handleCopyLink = () => {
       navigator.clipboard.writeText(shareLink);
@@ -88,9 +90,11 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
-              <span className="text-muted-foreground">Min:</span>
-              <span className="font-semibold">{room.minPlayers} jogadores</span>
+              <UserCircle className="w-4 h-4 text-primary" />
+              <span className="text-muted-foreground">Jogadores:</span>
+              <span className="font-semibold">
+                {roomPlayers.length}/{room.minPlayers}
+              </span>
             </div>
           </div>
 
@@ -99,7 +103,7 @@ export default function Dashboard() {
               Rodada {room.currentRound} de {room.totalRounds}
             </span>
             <span className="text-muted-foreground">
-              R$ {room.entryPrice}/linha
+              R$ {room.entryPrice}/entrada
             </span>
           </div>
 
@@ -195,22 +199,6 @@ export default function Dashboard() {
                   <h3 className="font-semibold text-lg">Criar Nova Sala</h3>
                   <p className="text-sm text-muted-foreground">
                     Configure uma nova competição
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/join-room">
-            <Card className="hover:border-primary/50 transition-all hover:scale-[1.02] cursor-pointer border-border/50 bg-gradient-to-br from-accent/10 to-accent/5">
-              <CardContent className="flex items-center gap-4 py-6">
-                <div className="p-3 rounded-full bg-accent/20">
-                  <Users className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">Entrar em Sala</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Participe de uma competição
                   </p>
                 </div>
               </CardContent>

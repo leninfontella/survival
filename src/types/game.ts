@@ -22,8 +22,8 @@ export interface Room {
 
 export interface Player {
   id: string;
+  roomId: string;
   name: string;
-  lines: number;
   isEliminated: boolean;
   selectedTeams: string[];
 }

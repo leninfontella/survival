@@ -62,11 +62,9 @@ export default function AdminCreateRoom() {
   const [copied, setCopied] = useState(false);
 
   const handleLeagueChange = (league: League) => {
-    const selectedLeague = leagueOptions.find((l) => l.value === league);
     setFormData({
       ...formData,
       league,
-      totalRounds: selectedLeague?.rounds || 38,
     });
   };
 
@@ -178,7 +176,7 @@ export default function AdminCreateRoom() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="entryPrice">Valor por Linha (R$)</Label>
+                  <Label htmlFor="entryPrice">Valor de Entrada (R$)</Label>
                   <Input
                     id="entryPrice"
                     type="number"
@@ -192,6 +190,9 @@ export default function AdminCreateRoom() {
                     }
                     required
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Cada jogador paga este valor para participar
+                  </p>
                 </div>
               </div>
 
@@ -209,10 +210,9 @@ export default function AdminCreateRoom() {
                     })
                   }
                   required
-                  disabled
                 />
                 <p className="text-xs text-muted-foreground">
-                  Definido automaticamente pela liga selecionada
+                  Defina o número de rodadas da competição
                 </p>
               </div>
 
@@ -227,9 +227,15 @@ export default function AdminCreateRoom() {
                           ?.label
                       }
                     </p>
-                    <p>• Entrada: R$ {formData.entryPrice} por linha</p>
+                    <p>• Entrada: R$ {formData.entryPrice}</p>
                     <p>• Mínimo: {formData.minPlayers} jogadores</p>
                     <p>• Duração: {formData.totalRounds} rodadas</p>
+                    <p>
+                      • Prêmio inicial: R${" "}
+                      {(
+                        formData.minPlayers * formData.entryPrice
+                      ).toLocaleString()}
+                    </p>
                   </div>
                 </div>
 

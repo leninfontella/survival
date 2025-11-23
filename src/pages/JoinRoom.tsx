@@ -24,7 +24,6 @@ export default function JoinRoom() {
   );
   const [formData, setFormData] = useState({
     name: "",
-    lines: 1,
   });
   const [showPayment, setShowPayment] = useState(false);
   const [pixCode] = useState(
@@ -54,11 +53,11 @@ export default function JoinRoom() {
   const handlePaymentConfirm = () => {
     if (!currentRoom) return;
 
-    joinRoom(currentRoom.id, formData.name, formData.lines);
+    joinRoom(currentRoom.id, formData.name);
 
     toast({
       title: "Pagamento confirmado!",
-      description: `Você entrou na sala com ${formData.lines} linha(s).`,
+      description: "Você entrou na sala.",
     });
 
     navigate("/room");
@@ -72,7 +71,7 @@ export default function JoinRoom() {
     });
   };
 
-  const totalPrice = currentRoom ? formData.lines * currentRoom.entryPrice : 0;
+  const totalPrice = currentRoom ? currentRoom.entryPrice : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
@@ -113,7 +112,7 @@ export default function JoinRoom() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">
-                            Valor por linha:
+                            Valor de entrada:
                           </span>
                           <span className="font-medium">
                             R$ {currentRoom.entryPrice.toFixed(2)}
@@ -152,27 +151,6 @@ export default function JoinRoom() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="lines">Quantidade de Linhas</Label>
-                        <Input
-                          id="lines"
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={formData.lines}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              lines: parseInt(e.target.value) || 1,
-                            })
-                          }
-                          required
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Cada linha é uma chance de ganhar. Máximo: 10 linhas.
-                        </p>
-                      </div>
-
                       <div className="pt-4 space-y-4">
                         <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
                           <div className="flex items-center justify-between">
@@ -186,6 +164,9 @@ export default function JoinRoom() {
                               R$ {totalPrice.toFixed(2)}
                             </span>
                           </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Você terá 1 linha que dura até ser eliminado
+                          </p>
                         </div>
 
                         <Button type="submit" className="w-full" size="lg">
@@ -217,7 +198,7 @@ export default function JoinRoom() {
                           Valor: R$ {totalPrice.toFixed(2)}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Nome: {formData.name} - {formData.lines} linha(s)
+                          Nome: {formData.name}
                         </p>
                       </div>
                     </div>

@@ -25,9 +25,10 @@ export default function Room() {
     );
   }
 
-  const activePlayers = players.filter((p) => !p.isEliminated);
+  const roomPlayers = players.filter((p) => p.roomId === currentRoom.id);
+  const activePlayers = roomPlayers.filter((p) => !p.isEliminated);
   const canStart =
-    players.length >= currentRoom.minPlayers &&
+    roomPlayers.length >= currentRoom.minPlayers &&
     currentRoom.status === "waiting";
   const isAdmin = !currentPlayer; // Simplified: if no currentPlayer, assume admin view
 
@@ -99,7 +100,9 @@ export default function Room() {
                 <div className="flex items-center gap-3">
                   <Users className="h-8 w-8 text-primary" />
                   <div>
-                    <div className="text-2xl font-bold">{players.length}</div>
+                    <div className="text-2xl font-bold">
+                      {roomPlayers.length}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       Jogadores Inscritos
                     </div>
@@ -149,9 +152,9 @@ export default function Room() {
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
                   <p className="text-muted-foreground">
-                    {players.length < currentRoom.minPlayers
+                    {roomPlayers.length < currentRoom.minPlayers
                       ? `Aguardando mais ${
-                          currentRoom.minPlayers - players.length
+                          currentRoom.minPlayers - roomPlayers.length
                         } jogador(es) para iniciar`
                       : "Número mínimo de jogadores atingido!"}
                   </p>
@@ -174,9 +177,9 @@ export default function Room() {
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
                   <p className="text-muted-foreground">
-                    {players.length < currentRoom.minPlayers
+                    {roomPlayers.length < currentRoom.minPlayers
                       ? `Aguardando mais ${
-                          currentRoom.minPlayers - players.length
+                          currentRoom.minPlayers - roomPlayers.length
                         } jogador(es) para iniciar`
                       : "Número mínimo de jogadores atingido! Prepare-se!"}
                   </p>
@@ -223,12 +226,12 @@ export default function Room() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {players.length === 0 ? (
+                {roomPlayers.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
                     Nenhum jogador inscrito ainda
                   </p>
                 ) : (
-                  players.map((player) => (
+                  roomPlayers.map((player) => (
                     <div
                       key={player.id}
                       className="flex justify-between items-center p-3 rounded-lg bg-background/50"
@@ -252,9 +255,6 @@ export default function Room() {
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="text-sm text-muted-foreground">
-                          {player.lines} linha(s)
-                        </span>
                         {player.isEliminated ? (
                           <Badge variant="destructive">Eliminado</Badge>
                         ) : (

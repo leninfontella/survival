@@ -16,7 +16,7 @@ interface GameContextType {
   rounds: Round[];
   teams: Team[];
   createRoom: (room: Omit<Room, "id" | "createdAt" | "prizePool">) => Room;
-  joinRoom: (roomId: string, playerName: string, lines: number) => void;
+  joinRoom: (roomId: string, playerName: string) => void;
   selectTeam: (teamId: string) => void;
   startRoom: () => void;
   nextRound: () => void;
@@ -129,7 +129,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ...roomData,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date(),
-      prizePool: 0,
+      prizePool: roomData.minPlayers * roomData.entryPrice,
     };
     setRooms((prev) => [...prev, room]);
     setCurrentRoom(room);
@@ -149,26 +149,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return room;
   };
 
-  const joinRoom = (roomId: string, playerName: string, lines: number) => {
+  const joinRoom = (roomId: string, playerName: string) => {
+    const room = rooms.find((r) => r.id === roomId);
+    if (!room) return;
+
     const player: Player = {
       id: Math.random().toString(36).substr(2, 9),
+      roomId: roomId,
       name: playerName,
-      lines,
       isEliminated: false,
       selectedTeams: [],
     };
 
     setPlayers((prev) => [...prev, player]);
     setCurrentPlayer(player);
-
-    if (currentRoom) {
-      const updatedRoom = {
-        ...currentRoom,
-        prizePool: currentRoom.prizePool + lines * currentRoom.entryPrice,
-      };
-      setCurrentRoom(updatedRoom);
-      setRooms((prev) => prev.map((r) => (r.id === roomId ? updatedRoom : r)));
-    }
+    setCurrentRoom(room);
   };
 
   const selectTeam = (teamId: string) => {
