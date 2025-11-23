@@ -1,10 +1,42 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Users, Target, Zap, Shield, TrendingUp } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import { AuthDialog } from "@/components/AuthDialog";
+import { useState, useEffect } from "react";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    // Verificar se o usuário está autenticado
+    const token = localStorage.getItem("auth_token");
+    setIsAuthenticated(!!token);
+  }, []);
+
+  const handleProtectedAction = (path: string) => {
+    if (isAuthenticated) {
+      navigate(path);
+    } else {
+      setPendingNavigation(path);
+      setAuthDialogOpen(true);
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    setIsAuthenticated(true);
+    if (pendingNavigation) {
+      navigate(pendingNavigation);
+      setPendingNavigation(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navbar */}
@@ -58,16 +90,22 @@ const Index = () => {
               você está fora. O último sobrevivente leva tudo!
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/admin/create-room">
-                <Button variant="hero" size="lg" className="min-w-[200px]">
-                  Criar Sala (Admin)
-                </Button>
-              </Link>
-              <Link to="/dashboard">
-                <Button variant="outline" size="lg" className="min-w-[200px]">
-                  Ver Salas
-                </Button>
-              </Link>
+              <Button
+                variant="hero"
+                size="lg"
+                className="min-w-[200px]"
+                onClick={() => handleProtectedAction("/admin/create-room")}
+              >
+                Criar Sala (Admin)
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="min-w-[200px]"
+                onClick={() => handleProtectedAction("/dashboard")}
+              >
+                Ver Salas
+              </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
@@ -246,6 +284,7 @@ const Index = () => {
               variant="hero"
               size="lg"
               className="text-xl px-12 py-6 h-auto"
+              onClick={() => handleProtectedAction("/dashboard")}
             >
               Participar Agora
             </Button>
@@ -307,6 +346,12 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      <AuthDialog
+        open={authDialogOpen}
+        onOpenChange={setAuthDialogOpen}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };
