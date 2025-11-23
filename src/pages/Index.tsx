@@ -63,6 +63,11 @@ const Index = () => {
                   Criar Sala (Admin)
                 </Button>
               </Link>
+              <Link to="/dashboard">
+                <Button variant="outline" size="lg" className="min-w-[200px]">
+                  Ver Salas
+                </Button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">

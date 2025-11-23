@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useGame } from "@/contexts/GameContext";
+import { useGame } from "@/hooks/useGame";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Users, DollarSign, QrCode, Copy } from "lucide-react";
 import { Link } from "react-router-dom";

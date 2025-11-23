@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useGame } from "@/contexts/GameContext";
+import { useGame } from "@/hooks/useGame";
 import { toast } from "@/hooks/use-toast";
 import { ArrowLeft, Copy, Check } from "lucide-react";
 import { Link } from "react-router-dom";

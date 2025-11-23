@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useGame } from "@/contexts/GameContext";
+import { useGame } from "@/hooks/useGame";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Users, Trophy, Play, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
