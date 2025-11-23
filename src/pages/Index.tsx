@@ -71,7 +71,7 @@ const Index = () => {
                 className="min-w-[200px]"
                 onClick={() => handleProtectedAction("/admin/create-room")}
               >
-                Criar Sala (Admin)
+                Criar Sala
               </Button>
               <Button
                 variant="outline"
