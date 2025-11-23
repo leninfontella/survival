@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { authAPI } from "@/services/api";
 
 const Signup = () => {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -70,14 +73,30 @@ const Signup = () => {
 
     setIsLoading(true);
 
-    // Simulação de cadastro
-    setTimeout(() => {
+    try {
+      const response = await authAPI.signup({ name, email, password });
+
       toast({
         title: "Cadastro realizado!",
-        description: "Bem-vindo ao Brasileirão Survivor",
+        description: response.message || "Bem-vindo ao Brasileirão Survivor",
       });
+
+      // Redirecionar para dashboard
+      navigate("/dashboard");
+    } catch (error: unknown) {
+      console.error("Erro no cadastro:", error);
+
+      const axiosError = error as AxiosError<{ message: string }>;
+      toast({
+        title: "Erro no cadastro",
+        description:
+          axiosError.response?.data?.message ||
+          "Erro ao criar conta. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -193,6 +212,7 @@ const Signup = () => {
                     minLength={6}
                     className="bg-background/50 border-primary/30 focus:border-primary"
                     autoFocus
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -206,6 +226,7 @@ const Signup = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     minLength={6}
                     className="bg-background/50 border-primary/30 focus:border-primary"
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -216,6 +237,7 @@ const Signup = () => {
                     variant="outline"
                     size="lg"
                     className="w-full"
+                    disabled={isLoading}
                   >
                     <ChevronLeft className="w-4 h-4 mr-2" />
                     Voltar
