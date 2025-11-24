@@ -24,11 +24,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useGame } from "@/hooks/useGame";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Copy, Check } from "lucide-react";
+import { ArrowLeft, Copy, Check, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { League } from "@/types/game";
+import { roomAPI } from "@/services/api";
+import { Navbar } from "@/components/Navbar";
 
 const leagueOptions = [
   { value: "brasil" as League, label: "🇧🇷 Brasileirão", rounds: 38 },
@@ -49,7 +50,6 @@ const leagueOptions = [
 
 export default function AdminCreateRoom() {
   const navigate = useNavigate();
-  const { createRoom } = useGame();
   const [formData, setFormData] = useState({
     name: "",
     league: "brasil" as League,
@@ -60,6 +60,7 @@ export default function AdminCreateRoom() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [createdRoomId, setCreatedRoomId] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLeagueChange = (league: League) => {
     setFormData({
@@ -68,23 +69,42 @@ export default function AdminCreateRoom() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    const room = createRoom({
-      ...formData,
-      status: "waiting",
-      currentRound: 0,
-      createdBy: "admin",
-    });
+    try {
+      const response = await roomAPI.create({
+        name: formData.name,
+        league: formData.league,
+        minPlayers: formData.minPlayers,
+        entryPrice: formData.entryPrice,
+        totalRounds: formData.totalRounds,
+      });
 
-    setCreatedRoomId(room.id);
-    setShowShareDialog(true);
+      if (response.success) {
+        setCreatedRoomId(response.data._id || response.data.id);
+        setShowShareDialog(true);
 
-    toast({
-      title: "Sala criada com sucesso!",
-      description: "Compartilhe o link com os jogadores.",
-    });
+        toast({
+          title: "Sala criada com sucesso!",
+          description: "Compartilhe o link com os jogadores.",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao criar sala:", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Tente novamente mais tarde.";
+
+      toast({
+        title: "Erro ao criar sala",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const shareLink = `${window.location.origin}/join-room/${createdRoomId}`;
@@ -106,7 +126,9 @@ export default function AdminCreateRoom() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
-      <div className="container mx-auto px-4 py-8">
+      <Navbar />
+
+      <div className="container mx-auto px-4 py-8 mt-20">
         <Link to="/dashboard">
           <Button variant="ghost" className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -130,6 +152,7 @@ export default function AdminCreateRoom() {
                 <Select
                   value={formData.league}
                   onValueChange={handleLeagueChange}
+                  disabled={isLoading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a liga" />
@@ -154,6 +177,7 @@ export default function AdminCreateRoom() {
                   }
                   placeholder="Ex: Survivor Premier League 2024"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -172,6 +196,7 @@ export default function AdminCreateRoom() {
                       })
                     }
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -189,6 +214,7 @@ export default function AdminCreateRoom() {
                       })
                     }
                     required
+                    disabled={isLoading}
                   />
                   <p className="text-xs text-muted-foreground">
                     Cada jogador paga este valor para participar
@@ -210,6 +236,7 @@ export default function AdminCreateRoom() {
                     })
                   }
                   required
+                  disabled={isLoading}
                 />
                 <p className="text-xs text-muted-foreground">
                   Defina o número de rodadas da competição
@@ -239,8 +266,20 @@ export default function AdminCreateRoom() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" size="lg">
-                  Criar Sala
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Criando Sala...
+                    </>
+                  ) : (
+                    "Criar Sala"
+                  )}
                 </Button>
               </div>
             </form>

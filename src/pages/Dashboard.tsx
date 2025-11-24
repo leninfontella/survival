@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { useGame } from "@/hooks/useGame";
 import {
   Trophy,
   Clock,
@@ -14,10 +13,11 @@ import {
   Copy,
   Check,
   UserCircle,
+  Loader2,
 } from "lucide-react";
-import { Room } from "@/types/game";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
+import { roomAPI } from "@/services/api";
 
 const leagueNames = {
   brasil: "🇧🇷 Brasileirão",
@@ -28,14 +28,57 @@ const leagueNames = {
   franca: "🇫🇷 Ligue 1",
 };
 
+interface Room {
+  _id: string;
+  name: string;
+  league: keyof typeof leagueNames;
+  status: "waiting" | "active" | "finished";
+  currentRound: number;
+  totalRounds: number;
+  minPlayers: number;
+  entryPrice: number;
+  prizePool: number;
+  players: Array<{
+    _id: string;
+    name: string;
+    isEliminated: boolean;
+  }>;
+  createdAt: string;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { rooms, players } = useGame();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"waiting" | "active" | "finished">(
     "waiting"
   );
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Buscar salas ao carregar
+  useEffect(() => {
+    fetchRooms();
+  }, []);
+
+  const fetchRooms = async () => {
+    setIsLoading(true);
+    try {
+      const response = await roomAPI.getAll();
+      if (response.success) {
+        setRooms(response.data);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar salas:", error);
+      toast({
+        title: "Erro ao carregar salas",
+        description: "Não foi possível carregar as salas. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const openRooms = rooms.filter((r) => r.status === "waiting");
   const activeRooms = rooms.filter((r) => r.status === "active");
@@ -50,12 +93,11 @@ export default function Dashboard() {
 
     const config = statusConfig[room.status];
     const Icon = config.icon;
-    const shareLink = `${window.location.origin}/join-room/${room.id}`;
-    const roomPlayers = players.filter((p) => p.roomId === room.id);
+    const shareLink = `${window.location.origin}/join-room/${room._id}`;
 
     const handleCopyLink = () => {
       navigator.clipboard.writeText(shareLink);
-      setCopiedRoomId(room.id);
+      setCopiedRoomId(room._id);
       toast({
         title: "Link copiado!",
         description: "O link da sala foi copiado para a área de transferência.",
@@ -92,7 +134,7 @@ export default function Dashboard() {
               <UserCircle className="w-4 h-4 text-primary" />
               <span className="text-muted-foreground">Jogadores:</span>
               <span className="font-semibold">
-                {roomPlayers.length}/{room.minPlayers}
+                {room.players.length}/{room.minPlayers}
               </span>
             </div>
           </div>
@@ -121,7 +163,7 @@ export default function Dashboard() {
                   onClick={handleCopyLink}
                   className="shrink-0"
                 >
-                  {copiedRoomId === room.id ? (
+                  {copiedRoomId === room._id ? (
                     <Check className="w-4 h-4 text-green-500" />
                   ) : (
                     <Copy className="w-4 h-4" />
@@ -135,7 +177,7 @@ export default function Dashboard() {
             className="w-full mt-2"
             onClick={() => {
               if (room.status === "waiting") {
-                navigate(`/join-room/${room.id}`);
+                navigate(`/join-room/${room._id}`);
               } else {
                 navigate("/room");
               }
@@ -157,6 +199,22 @@ export default function Dashboard() {
       </CardContent>
     </Card>
   );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 mt-20">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center space-y-4">
+              <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+              <p className="text-muted-foreground">Carregando salas...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
@@ -232,7 +290,7 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {openRooms.map((room) => (
-                  <RoomCard key={room.id} room={room} />
+                  <RoomCard key={room._id} room={room} />
                 ))}
               </div>
             )}
@@ -244,7 +302,7 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {activeRooms.map((room) => (
-                  <RoomCard key={room.id} room={room} />
+                  <RoomCard key={room._id} room={room} />
                 ))}
               </div>
             )}
@@ -256,7 +314,7 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {finishedRooms.map((room) => (
-                  <RoomCard key={room.id} room={room} />
+                  <RoomCard key={room._id} room={room} />
                 ))}
               </div>
             )}
