@@ -58,27 +58,26 @@ export default function Dashboard() {
 
   // Buscar salas ao carregar
   useEffect(() => {
-    fetchRooms();
-  }, []);
-
-  const fetchRooms = async () => {
-    setIsLoading(true);
-    try {
-      const response = await roomAPI.getAll();
-      if (response.success) {
-        setRooms(response.data);
+    const fetchRooms = async () => {
+      setIsLoading(true);
+      try {
+        const response = await roomAPI.getAll();
+        if (response.success) {
+          setRooms(response.data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar salas:", error);
+        toast({
+          title: "Erro ao carregar salas",
+          description: "Não foi possível carregar as salas. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Erro ao buscar salas:", error);
-      toast({
-        title: "Erro ao carregar salas",
-        description: "Não foi possível carregar as salas. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    fetchRooms();
+  }, [toast]);
 
   const openRooms = rooms.filter((r) => r.status === "waiting");
   const activeRooms = rooms.filter((r) => r.status === "active");
