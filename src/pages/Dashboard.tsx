@@ -14,6 +14,7 @@ import {
   Check,
   UserCircle,
   Loader2,
+  Crown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
@@ -28,6 +29,12 @@ const leagueNames = {
   franca: "🇫🇷 Ligue 1",
 };
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+}
+
 interface Room {
   _id: string;
   name: string;
@@ -38,6 +45,7 @@ interface Room {
   minPlayers: number;
   entryPrice: number;
   prizePool: number;
+  createdBy: User | string;
   players: Array<{
     _id: string;
     name: string;
@@ -94,6 +102,10 @@ export default function Dashboard() {
     const Icon = config.icon;
     const shareLink = `${window.location.origin}/join-room/${room._id}`;
 
+    // Extrair nome do criador
+    const creatorName =
+      typeof room.createdBy === "string" ? "Admin" : room.createdBy.name;
+
     const handleCopyLink = () => {
       navigator.clipboard.writeText(shareLink);
       setCopiedRoomId(room._id);
@@ -113,6 +125,16 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">
                 {leagueNames[room.league]}
               </p>
+              {/* Nome do Administrador */}
+              <div className="flex items-center gap-1.5 mt-2">
+                <Crown className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs text-muted-foreground">
+                  Admin:{" "}
+                  <span className="text-primary font-medium">
+                    {creatorName}
+                  </span>
+                </span>
+              </div>
             </div>
             <Badge className={`${config.color} text-white border-0`}>
               <Icon className="w-3 h-3 mr-1" />
