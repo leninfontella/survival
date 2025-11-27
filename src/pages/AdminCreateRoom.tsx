@@ -17,15 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Copy, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { League } from "@/types/game";
 import { roomAPI } from "@/services/api";
@@ -57,9 +50,6 @@ export default function AdminCreateRoom() {
     entryPrice: 50,
     totalRounds: 38,
   });
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [createdRoomId, setCreatedRoomId] = useState("");
-  const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLeagueChange = (league: League) => {
@@ -83,13 +73,15 @@ export default function AdminCreateRoom() {
       });
 
       if (response.success) {
-        setCreatedRoomId(response.data._id || response.data.id);
-        setShowShareDialog(true);
+        const roomId = response.data._id || response.data.id;
 
         toast({
           title: "Sala criada com sucesso!",
-          description: "Compartilhe o link com os jogadores.",
+          description: "Você será redirecionado para a sala de espera.",
         });
+
+        // Redireciona para JoinRoom como admin/criador
+        navigate(`/join-room/${roomId}`);
       }
     } catch (error) {
       console.error("Erro ao criar sala:", error);
@@ -105,23 +97,6 @@ export default function AdminCreateRoom() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const shareLink = `${window.location.origin}/join-room/${createdRoomId}`;
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast({
-      title: "Link copiado!",
-      description: "O link foi copiado para a área de transferência.",
-    });
-  };
-
-  const handleCloseDialog = () => {
-    setShowShareDialog(false);
-    navigate("/dashboard");
   };
 
   return (
@@ -278,46 +253,13 @@ export default function AdminCreateRoom() {
                       Criando Sala...
                     </>
                   ) : (
-                    "Criar Sala"
+                    "Criar Sala e Entrar"
                   )}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
-
-        <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Sala criada com sucesso!</DialogTitle>
-              <DialogDescription>
-                Compartilhe o link abaixo com os jogadores
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-muted border border-border">
-                <p className="text-sm break-all">{shareLink}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleCopyLink} className="flex-1">
-                  {copied ? (
-                    <Check className="mr-2 h-4 w-4" />
-                  ) : (
-                    <Copy className="mr-2 h-4 w-4" />
-                  )}
-                  {copied ? "Copiado!" : "Copiar Link"}
-                </Button>
-                <Button
-                  onClick={handleCloseDialog}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Ir para Dashboard
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );

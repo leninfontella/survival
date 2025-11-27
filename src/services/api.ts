@@ -33,6 +33,7 @@ api.interceptors.response.use(
       // Token inválido ou expirado - redirecionar para login
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      localStorage.removeItem("userId");
       window.location.href = "/login";
     }
     return Promise.reject(error);
@@ -48,6 +49,11 @@ export const authAPI = {
     if (response.data.success) {
       localStorage.setItem("token", response.data.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.data.user));
+      // Salvar userId separadamente para facilitar acesso
+      localStorage.setItem(
+        "userId",
+        response.data.data.user._id || response.data.data.user.id
+      );
     }
     return response.data;
   },
@@ -58,6 +64,11 @@ export const authAPI = {
     if (response.data.success) {
       localStorage.setItem("token", response.data.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.data.user));
+      // Salvar userId separadamente para facilitar acesso
+      localStorage.setItem(
+        "userId",
+        response.data.data.user._id || response.data.data.user.id
+      );
     }
     return response.data;
   },
@@ -72,6 +83,7 @@ export const authAPI = {
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("userId");
     window.location.href = "/login";
   },
 
@@ -84,6 +96,11 @@ export const authAPI = {
   getCurrentUser: () => {
     const user = localStorage.getItem("user");
     return user ? JSON.parse(user) : null;
+  },
+
+  // Obter ID do usuário atual
+  getCurrentUserId: () => {
+    return localStorage.getItem("userId");
   },
 };
 
@@ -124,9 +141,72 @@ export const roomAPI = {
     return response.data;
   },
 
-  // Iniciar sala
+  // Iniciar sala (apenas admin/criador)
   start: async (roomId: string) => {
     const response = await api.put(`/rooms/${roomId}/start`);
+    return response.data;
+  },
+
+  // Selecionar time para uma rodada
+  selectTeam: async (roomId: string, teamId: string) => {
+    const response = await api.post(`/rooms/${roomId}/select-team`, { teamId });
+    return response.data;
+  },
+
+  // Processar resultado da rodada (apenas admin)
+  processRound: async (
+    roomId: string,
+    results: { teamId: string; won: boolean }[]
+  ) => {
+    const response = await api.post(`/rooms/${roomId}/process-round`, {
+      results,
+    });
+    return response.data;
+  },
+
+  // Finalizar sala
+  finish: async (roomId: string) => {
+    const response = await api.put(`/rooms/${roomId}/finish`);
+    return response.data;
+  },
+};
+
+// ============= PLAYER ENDPOINTS =============
+
+export const playerAPI = {
+  // Obter jogador por ID
+  getById: async (playerId: string) => {
+    const response = await api.get(`/players/${playerId}`);
+    return response.data;
+  },
+
+  // Obter jogadores de uma sala
+  getByRoom: async (roomId: string) => {
+    const response = await api.get(`/players/room/${roomId}`);
+    return response.data;
+  },
+
+  // Atualizar status do jogador
+  updateStatus: async (playerId: string, isEliminated: boolean) => {
+    const response = await api.put(`/players/${playerId}/status`, {
+      isEliminated,
+    });
+    return response.data;
+  },
+};
+
+// ============= TEAM ENDPOINTS (se necessário buscar times da API) =============
+
+export const teamAPI = {
+  // Obter times por liga
+  getByLeague: async (league: string) => {
+    const response = await api.get(`/teams/league/${league}`);
+    return response.data;
+  },
+
+  // Obter todos os times
+  getAll: async () => {
+    const response = await api.get("/teams");
     return response.data;
   },
 };

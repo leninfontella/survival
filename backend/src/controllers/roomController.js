@@ -81,6 +81,8 @@ exports.getRooms = async (req, res) => {
 // @access  Public
 exports.getRoomById = async (req, res) => {
   try {
+    console.log("🔍 Buscando sala com ID:", req.params.id);
+
     const room = await Room.findById(req.params.id)
       .populate("createdBy", "name email")
       .populate({
@@ -93,18 +95,31 @@ exports.getRoomById = async (req, res) => {
       });
 
     if (!room) {
+      console.log("❌ Sala não encontrada:", req.params.id);
       return res.status(404).json({
         success: false,
         message: "Sala não encontrada",
       });
     }
 
+    console.log("✅ Sala encontrada:", room.name);
+    console.log("👥 Jogadores:", room.players.length);
+
     res.status(200).json({
       success: true,
       data: room,
     });
   } catch (error) {
-    console.error("Erro ao buscar sala:", error);
+    console.error("❌ Erro ao buscar sala:", error);
+
+    // Verificar se é um erro de ID inválido
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "ID da sala inválido",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Erro ao buscar sala",
@@ -165,11 +180,13 @@ exports.joinRoom = async (req, res) => {
     room.prizePool = room.players.length * room.entryPrice;
     await room.save();
 
-    // Buscar sala atualizada
-    const updatedRoom = await Room.findById(roomId).populate(
-      "players",
-      "name isEliminated user"
-    );
+    // Buscar sala atualizada com todos os players
+    const updatedRoom = await Room.findById(roomId)
+      .populate("createdBy", "name email")
+      .populate({
+        path: "players",
+        select: "name isEliminated user",
+      });
 
     res.status(201).json({
       success: true,
@@ -194,7 +211,10 @@ exports.joinRoom = async (req, res) => {
 // @access  Private (Apenas criador)
 exports.startRoom = async (req, res) => {
   try {
-    const room = await Room.findById(req.params.id);
+    const room = await Room.findById(req.params.id).populate(
+      "players",
+      "name isEliminated"
+    );
 
     if (!room) {
       return res.status(404).json({
@@ -219,15 +239,31 @@ exports.startRoom = async (req, res) => {
       });
     }
 
+    // Verificar se a sala já foi iniciada
+    if (room.status !== "waiting") {
+      return res.status(400).json({
+        success: false,
+        message: "Esta sala já foi iniciada",
+      });
+    }
+
     room.status = "active";
     room.currentRound = 1;
     room.startedAt = Date.now();
     await room.save();
 
+    // Buscar sala atualizada
+    const updatedRoom = await Room.findById(req.params.id)
+      .populate("createdBy", "name email")
+      .populate({
+        path: "players",
+        select: "name isEliminated user",
+      });
+
     res.status(200).json({
       success: true,
-      message: "Sala iniciada!",
-      data: room,
+      message: "Sala iniciada! Todos os jogadores devem selecionar seus times.",
+      data: updatedRoom,
     });
   } catch (error) {
     console.error("Erro ao iniciar sala:", error);
