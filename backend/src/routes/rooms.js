@@ -6,6 +6,8 @@ const {
   getRoomById,
   joinRoom,
   startRoom,
+  selectTeam,
+  getUsedTeams,
 } = require("../controllers/roomController");
 const { protect } = require("../middleware/auth");
 
@@ -17,5 +19,7 @@ router.get("/:id", getRoomById);
 router.post("/", protect, createRoom);
 router.post("/:id/join", protect, joinRoom);
 router.put("/:id/start", protect, startRoom);
+router.post("/:id/select-team", protect, selectTeam);
+router.get("/:id/used-teams", protect, getUsedTeams);
 
 module.exports = router;

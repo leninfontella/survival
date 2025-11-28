@@ -274,3 +274,167 @@ exports.startRoom = async (req, res) => {
     });
   }
 };
+
+// @desc    Selecionar time para a rodada atual
+// @route   POST /api/rooms/:id/select-team
+// @access  Private
+exports.selectTeam = async (req, res) => {
+  try {
+    const { teamId, teamName } = req.body;
+    const roomId = req.params.id;
+    const userId = req.user.id;
+
+    console.log("🎯 Selecionando time:", { roomId, userId, teamId, teamName });
+
+    // Validações
+    if (!teamId || !teamName) {
+      return res.status(400).json({
+        success: false,
+        message: "Por favor, forneça o ID e nome do time",
+      });
+    }
+
+    // Buscar sala
+    const room = await Room.findById(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Sala não encontrada",
+      });
+    }
+
+    // Verificar se a sala está ativa
+    if (room.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "A sala não está ativa",
+      });
+    }
+
+    // Buscar jogador
+    const player = await Player.findOne({
+      user: userId,
+      room: roomId,
+    });
+
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        message: "Você não está nesta sala",
+      });
+    }
+
+    // Verificar se o jogador já foi eliminado
+    if (player.isEliminated) {
+      return res.status(400).json({
+        success: false,
+        message: "Você já foi eliminado desta competição",
+      });
+    }
+
+    // Verificar se o time já foi usado
+    const teamAlreadyUsed = player.selectedTeams.some(
+      (selection) => selection.teamId === teamId
+    );
+
+    if (teamAlreadyUsed) {
+      return res.status(400).json({
+        success: false,
+        message: "Você já usou este time anteriormente",
+      });
+    }
+
+    // Verificar se o jogador já selecionou um time para esta rodada
+    const alreadySelectedThisRound = player.selectedTeams.some(
+      (selection) => selection.round === room.currentRound
+    );
+
+    if (alreadySelectedThisRound) {
+      return res.status(400).json({
+        success: false,
+        message: "Você já selecionou um time para esta rodada",
+      });
+    }
+
+    // Adicionar seleção do time
+    player.selectedTeams.push({
+      teamId,
+      teamName,
+      round: room.currentRound,
+      won: null, // Será definido quando processar os resultados
+    });
+
+    await player.save();
+
+    console.log("✅ Time selecionado com sucesso:", player.selectedTeams);
+
+    // Buscar player atualizado
+    const updatedPlayer = await Player.findById(player._id)
+      .populate("user", "name email")
+      .populate("room", "name currentRound");
+
+    res.status(200).json({
+      success: true,
+      message: "Time selecionado com sucesso!",
+      data: {
+        player: updatedPlayer,
+        selectedTeam: {
+          teamId,
+          teamName,
+          round: room.currentRound,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("❌ Erro ao selecionar time:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao selecionar time",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Obter times já usados pelo jogador
+// @route   GET /api/rooms/:id/used-teams
+// @access  Private
+exports.getUsedTeams = async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const userId = req.user.id;
+
+    // Buscar jogador
+    const player = await Player.findOne({
+      user: userId,
+      room: roomId,
+    });
+
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        message: "Você não está nesta sala",
+      });
+    }
+
+    // Extrair IDs dos times já usados
+    const usedTeamIds = player.selectedTeams.map(
+      (selection) => selection.teamId
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        usedTeams: usedTeamIds,
+        selections: player.selectedTeams,
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao buscar times usados:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar times usados",
+      error: error.message,
+    });
+  }
+};

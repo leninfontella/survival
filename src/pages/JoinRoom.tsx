@@ -250,9 +250,10 @@ export default function JoinRoom() {
           description: "Redirecionando para seleção de time...",
         });
 
-        // Redirecionar para seleção de time
+        // Redirecionar ADMIN para seleção de time
         setTimeout(() => {
-          navigate("/room/select-team");
+          console.log("🔀 Redirecionando para:", `/room/select-team/${roomId}`);
+          navigate(`/room/select-team/${roomId}`);
         }, 1000);
       }
     } catch (err) {
@@ -265,6 +266,28 @@ export default function JoinRoom() {
         variant: "destructive",
       });
     }
+  };
+
+  const handlePlayerStartSelection = () => {
+    if (!roomId) {
+      toast({
+        title: "Erro",
+        description: "ID da sala não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Jogador não-admin clica para selecionar time
+    console.log("🎮 Jogador iniciando seleção");
+    console.log("🔀 Redirecionando para:", `/room/select-team/${roomId}`);
+
+    toast({
+      title: "Vamos começar!",
+      description: "Escolha seu time para a primeira rodada.",
+    });
+
+    navigate(`/room/select-team/${roomId}`);
   };
 
   const handleCopyPix = () => {
@@ -562,7 +585,8 @@ export default function JoinRoom() {
                 )}
               </CardContent>
             </Card>
-          ) : (
+          ) : roomData.status === "waiting" ? (
+            // Sala ainda não iniciada - aguardando
             <Card className="border-accent/50 bg-accent/5">
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
@@ -573,7 +597,7 @@ export default function JoinRoom() {
                         } jogador(es) para iniciar`
                       : "Número mínimo de jogadores atingido!"}
                   </p>
-                  {isAdmin && (
+                  {isAdmin ? (
                     <Button
                       size="lg"
                       disabled={!canStart}
@@ -583,12 +607,40 @@ export default function JoinRoom() {
                       <Play className="mr-2 h-5 w-5" />
                       Iniciar Competição
                     </Button>
+                  ) : (
+                    canStart && (
+                      <p className="text-primary font-semibold">
+                        Aguardando o administrador iniciar a competição...
+                      </p>
+                    )
                   )}
-                  {!isAdmin && canStart && (
-                    <p className="text-primary font-semibold">
-                      Aguardando o administrador iniciar a competição...
-                    </p>
-                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Sala já iniciada - botão para selecionar time
+            <Card className="border-primary/50 bg-primary/5">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Trophy className="h-6 w-6 text-primary animate-pulse" />
+                    <h3 className="text-xl font-bold text-primary">
+                      Competição Iniciada!
+                    </h3>
+                    <Trophy className="h-6 w-6 text-primary animate-pulse" />
+                  </div>
+                  <p className="text-muted-foreground">
+                    Rodada {roomData.currentRound} - É hora de escolher seu
+                    time!
+                  </p>
+                  <Button
+                    size="lg"
+                    onClick={handlePlayerStartSelection}
+                    className="w-full md:w-auto"
+                  >
+                    <Play className="mr-2 h-5 w-5" />
+                    INICIAR SOBREVIVÊNCIA
+                  </Button>
                 </div>
               </CardContent>
             </Card>

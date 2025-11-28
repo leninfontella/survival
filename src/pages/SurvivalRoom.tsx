@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,24 +14,107 @@ import {
   ArrowRight,
   Home,
   Zap,
+  Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
+import { roomAPI } from "@/services/api";
 import heroBg from "@/assets/hero-bg.jpg";
+
+interface RoomData {
+  _id: string;
+  name: string;
+  league: string;
+  status: "waiting" | "active" | "finished";
+  currentRound: number;
+  totalRounds: number;
+  prizePool: number;
+  players: Array<{
+    _id: string;
+    name: string;
+    isEliminated: boolean;
+    selectedTeams: Array<{
+      teamId: string;
+      teamName: string;
+      round: number;
+      won: boolean | null;
+    }>;
+  }>;
+}
 
 export default function SurvivalRoom() {
   const navigate = useNavigate();
-  const { currentRoom, players, rounds, currentPlayer, nextRound, teams } =
-    useGame();
+  const { roomId } = useParams<{ roomId: string }>();
+  const { teams } = useGame();
+  const [roomData, setRoomData] = useState<RoomData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  if (!currentRoom || !currentPlayer) {
+  // Buscar dados da sala
+  useEffect(() => {
+    const fetchRoom = async () => {
+      if (!roomId) {
+        toast({
+          title: "Erro",
+          description: "ID da sala não encontrado.",
+          variant: "destructive",
+        });
+        navigate("/dashboard");
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await roomAPI.getById(roomId);
+        if (response.success) {
+          setRoomData(response.data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar sala:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar a sala.",
+          variant: "destructive",
+        });
+        navigate("/dashboard");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRoom();
+
+    // Polling para atualizar dados
+    const interval = setInterval(() => {
+      if (roomData) {
+        fetchRoom();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [roomId, navigate]);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground mb-4">Sessão não encontrada</p>
-            <Link to="/">
-              <Button>Voltar ao Início</Button>
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Carregando sala...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!roomData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <p className="text-muted-foreground mb-4">Sala não encontrada</p>
+            <Link to="/dashboard">
+              <Button>Voltar ao Dashboard</Button>
             </Link>
           </CardContent>
         </Card>
@@ -39,38 +122,25 @@ export default function SurvivalRoom() {
     );
   }
 
-  const roomPlayers = players.filter((p) => p.roomId === currentRoom.id);
-  const activePlayers = roomPlayers.filter((p) => !p.isEliminated);
-  const eliminatedPlayers = roomPlayers.filter((p) => p.isEliminated);
-  const currentRound = rounds.find(
-    (r) => r.number === currentRoom.currentRound
-  );
-  const isAdmin = currentPlayer.name === currentRoom.createdBy;
+  const activePlayers = roomData.players.filter((p) => !p.isEliminated);
+  const eliminatedPlayers = roomData.players.filter((p) => p.isEliminated);
 
   const handleNextRound = () => {
     setIsProcessing(true);
-    // Simulate processing time
+    // TODO: Implementar lógica de próxima rodada
     setTimeout(() => {
-      nextRound();
       setIsProcessing(false);
-
-      // Check if game ended
-      if (
-        currentRoom.currentRound >= currentRoom.totalRounds ||
-        activePlayers.length === 1
-      ) {
-        // Game finished
-      } else {
-        // Go to next round team selection
-        navigate("/room/select-team");
-      }
+      toast({
+        title: "Próxima rodada",
+        description: "Funcionalidade em desenvolvimento.",
+      });
     }, 2000);
   };
 
   const getTeamById = (teamId: string) => teams.find((t) => t.id === teamId);
 
   const isGameFinished =
-    currentRoom.status === "finished" || activePlayers.length === 1;
+    roomData.status === "finished" || activePlayers.length === 1;
   const winner = activePlayers.length === 1 ? activePlayers[0] : null;
 
   return (
@@ -101,7 +171,7 @@ export default function SurvivalRoom() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <Link to="/">
+          <Link to="/dashboard">
             <Button variant="ghost" className="hover:bg-primary/10">
               <Home className="mr-2 h-4 w-4" />
               Início
@@ -122,7 +192,7 @@ export default function SurvivalRoom() {
                     <Trophy className="h-10 w-10 text-primary animate-pulse" />
                     <div>
                       <CardTitle className="text-3xl md:text-4xl font-black bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                        {currentRoom.name}
+                        {roomData.name}
                       </CardTitle>
                       <p className="text-muted-foreground mt-1">
                         Sala de Sobrevivência
@@ -133,13 +203,13 @@ export default function SurvivalRoom() {
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Rodada</p>
                       <p className="text-2xl font-bold text-primary">
-                        {currentRoom.currentRound}/{currentRoom.totalRounds}
+                        {roomData.currentRound}/{roomData.totalRounds}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Prêmio</p>
                       <p className="text-2xl font-bold text-primary">
-                        R$ {currentRoom.prizePool}
+                        R$ {roomData.prizePool.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -175,7 +245,7 @@ export default function SurvivalRoom() {
                         {winner.name}
                       </p>
                       <p className="text-xl text-muted-foreground mt-4">
-                        Ganhou R$ {currentRoom.prizePool}
+                        Ganhou R$ {roomData.prizePool.toFixed(2)}
                       </p>
                     </div>
                   </CardHeader>
@@ -199,7 +269,7 @@ export default function SurvivalRoom() {
                         Total de Jogadores
                       </p>
                       <p className="text-3xl font-bold text-foreground">
-                        {roomPlayers.length}
+                        {roomData.players.length}
                       </p>
                     </div>
                     <Users className="h-12 w-12 text-primary opacity-50" />
@@ -271,15 +341,15 @@ export default function SurvivalRoom() {
                 <CardContent className="pt-6">
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {activePlayers.map((player, index) => {
-                      const lastSelectedTeamId =
+                      const lastSelection =
                         player.selectedTeams[player.selectedTeams.length - 1];
-                      const lastTeam = lastSelectedTeamId
-                        ? getTeamById(lastSelectedTeamId)
+                      const lastTeam = lastSelection
+                        ? getTeamById(lastSelection.teamId)
                         : null;
 
                       return (
                         <motion.div
-                          key={player.id}
+                          key={player._id}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.05 }}
@@ -303,18 +373,13 @@ export default function SurvivalRoom() {
                               <p className="font-semibold text-foreground">
                                 {player.name}
                               </p>
-                              {lastTeam && (
+                              {lastSelection && (
                                 <p className="text-sm text-primary font-medium mt-0.5">
-                                  {lastTeam.name}
+                                  {lastSelection.teamName}
                                 </p>
                               )}
                             </div>
                           </div>
-                          {player.id === currentPlayer.id && (
-                            <Badge variant="default" className="bg-primary">
-                              Você
-                            </Badge>
-                          )}
                         </motion.div>
                       );
                     })}
@@ -344,15 +409,15 @@ export default function SurvivalRoom() {
                   ) : (
                     <div className="space-y-3 max-h-[400px] overflow-y-auto">
                       {eliminatedPlayers.map((player, index) => {
-                        const lastSelectedTeamId =
+                        const lastSelection =
                           player.selectedTeams[player.selectedTeams.length - 1];
-                        const lastTeam = lastSelectedTeamId
-                          ? getTeamById(lastSelectedTeamId)
+                        const lastTeam = lastSelection
+                          ? getTeamById(lastSelection.teamId)
                           : null;
 
                         return (
                           <motion.div
-                            key={player.id}
+                            key={player._id}
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
@@ -376,9 +441,9 @@ export default function SurvivalRoom() {
                                 <p className="font-semibold line-through">
                                   {player.name}
                                 </p>
-                                {lastTeam && (
+                                {lastSelection && (
                                   <span className="text-xs text-muted-foreground line-through">
-                                    {lastTeam.name}
+                                    {lastSelection.teamName}
                                   </span>
                                 )}
                               </div>
@@ -393,86 +458,6 @@ export default function SurvivalRoom() {
               </Card>
             </motion.div>
           </div>
-
-          {/* Admin Controls */}
-          {isAdmin && !isGameFinished && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <Card className="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border-primary/30 shadow-xl">
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <h3 className="text-xl font-bold mb-2">
-                        Controles do Administrador
-                      </h3>
-                      <p className="text-muted-foreground mb-4">
-                        Processe os resultados da rodada{" "}
-                        {currentRoom.currentRound} e avance para a próxima
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleNextRound}
-                      disabled={isProcessing}
-                      size="lg"
-                      className="w-full text-lg font-bold shadow-xl"
-                    >
-                      {isProcessing ? (
-                        <>Processando resultados...</>
-                      ) : (
-                        <>
-                          Próxima Rodada
-                          <ArrowRight className="ml-2 h-5 w-5" />
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Round Status */}
-          {currentRound && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-            >
-              <Card className="bg-card/50 backdrop-blur-xl border-border/50 shadow-lg">
-                <CardHeader>
-                  <CardTitle>Status da Rodada</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Rodada {currentRound.number}
-                      </p>
-                      <Badge
-                        variant={
-                          currentRound.status === "finished"
-                            ? "secondary"
-                            : currentRound.status === "playing"
-                            ? "default"
-                            : "outline"
-                        }
-                        className="mt-2"
-                      >
-                        {currentRound.status === "selecting" &&
-                          "Seleção de Times"}
-                        {currentRound.status === "playing" && "Em Andamento"}
-                        {currentRound.status === "finished" && "Finalizada"}
-                        {currentRound.status === "upcoming" && "Próxima"}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
 
           {/* Motivational Banner */}
           <motion.div

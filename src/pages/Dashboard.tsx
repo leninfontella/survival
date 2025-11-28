@@ -199,13 +199,20 @@ export default function Dashboard() {
             onClick={() => {
               if (room.status === "waiting") {
                 navigate(`/join-room/${room._id}`);
+              } else if (room.status === "active") {
+                navigate(`/survival-room/${room._id}`);
               } else {
-                navigate("/room");
+                // Finalizada - pode ir para uma página de resultados
+                navigate(`/survival-room/${room._id}`);
               }
             }}
             variant={room.status === "waiting" ? "default" : "outline"}
           >
-            {room.status === "waiting" ? "Entrar na Sala" : "Ver Detalhes"}
+            {room.status === "waiting"
+              ? "Entrar na Sala"
+              : room.status === "active"
+              ? "Ver Sala Ativa"
+              : "Ver Resultados"}
           </Button>
         </CardContent>
       </Card>

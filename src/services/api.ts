@@ -49,7 +49,6 @@ export const authAPI = {
     if (response.data.success) {
       localStorage.setItem("token", response.data.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.data.user));
-      // Salvar userId separadamente para facilitar acesso
       localStorage.setItem(
         "userId",
         response.data.data.user._id || response.data.data.user.id
@@ -64,7 +63,6 @@ export const authAPI = {
     if (response.data.success) {
       localStorage.setItem("token", response.data.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.data.user));
-      // Salvar userId separadamente para facilitar acesso
       localStorage.setItem(
         "userId",
         response.data.data.user._id || response.data.data.user.id
@@ -141,15 +139,24 @@ export const roomAPI = {
     return response.data;
   },
 
-  // Iniciar sala (apenas admin/criador)
+  // Iniciar sala (apenas admin)
   start: async (roomId: string) => {
     const response = await api.put(`/rooms/${roomId}/start`);
     return response.data;
   },
 
   // Selecionar time para uma rodada
-  selectTeam: async (roomId: string, teamId: string) => {
-    const response = await api.post(`/rooms/${roomId}/select-team`, { teamId });
+  selectTeam: async (roomId: string, teamId: string, teamName: string) => {
+    const response = await api.post(`/rooms/${roomId}/select-team`, {
+      teamId,
+      teamName,
+    });
+    return response.data;
+  },
+
+  // Obter times já usados pelo jogador
+  getUsedTeams: async (roomId: string) => {
+    const response = await api.get(`/rooms/${roomId}/used-teams`);
     return response.data;
   },
 

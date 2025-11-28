@@ -34,16 +34,31 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Rotas Públicas */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/cadastro" element={<Signup />} />
+
+              {/* Dashboard */}
               <Route path="/dashboard" element={<Dashboard />} />
+
+              {/* Admin */}
               <Route path="/admin/create-room" element={<AdminCreateRoom />} />
+
+              {/* Rotas de Sala com :roomId */}
               <Route path="/join-room/:roomId" element={<JoinRoom />} />
+              <Route
+                path="/room/select-team/:roomId"
+                element={<SelectTeam />}
+              />
+              <Route path="/survival-room/:roomId" element={<SurvivalRoom />} />
+
+              {/* Rotas antigas (manter para compatibilidade se necessário) */}
               <Route path="/room" element={<Room />} />
               <Route path="/room/select-team" element={<SelectTeam />} />
               <Route path="/survival-room" element={<SurvivalRoom />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+              {/* 404 - SEMPRE POR ÚLTIMO */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

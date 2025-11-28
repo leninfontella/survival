@@ -1,38 +1,148 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useGame } from "@/hooks/useGame";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Check, X, Trophy, Shield } from "lucide-react";
+import { ArrowLeft, Check, X, Trophy, Shield, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { TeamTransition } from "@/components/TeamTransition";
+import { roomAPI, authAPI } from "@/services/api";
+
+// Mock de times - você deve substituir isso pela chamada da API real
+const mockTeamsByLeague = {
+  espanha: [
+    {
+      id: "1",
+      name: "Real Madrid",
+      logo: "https://via.placeholder.com/56x56?text=RM",
+      league: "espanha" as const,
+    },
+    {
+      id: "2",
+      name: "Barcelona",
+      logo: "https://via.placeholder.com/56x56?text=BAR",
+      league: "espanha" as const,
+    },
+    {
+      id: "3",
+      name: "Atlético Madrid",
+      logo: "https://via.placeholder.com/56x56?text=ATM",
+      league: "espanha" as const,
+    },
+    // ... adicione mais times
+  ],
+  brasil: [
+    {
+      id: "10",
+      name: "Flamengo",
+      logo: "https://via.placeholder.com/56x56?text=FLA",
+      league: "brasil" as const,
+    },
+    {
+      id: "11",
+      name: "Palmeiras",
+      logo: "https://via.placeholder.com/56x56?text=PAL",
+      league: "brasil" as const,
+    },
+    // ... adicione mais times
+  ],
+  // ... outras ligas
+};
+
+interface Team {
+  id: string;
+  name: string;
+  logo: string;
+  league:
+    | "brasil"
+    | "espanha"
+    | "inglaterra"
+    | "alemanha"
+    | "italia"
+    | "franca";
+}
+
+interface RoomData {
+  _id: string;
+  name: string;
+  league: string;
+  status: string;
+  currentRound: number;
+  totalRounds: number;
+  prizePool: number;
+}
 
 export default function SelectTeam() {
   const navigate = useNavigate();
-  const { currentRoom, currentPlayer, getTeamsByLeague, selectTeam, teams } =
-    useGame();
+  const { roomId } = useParams<{ roomId: string }>();
+  const [roomData, setRoomData] = useState<RoomData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [showTransition, setShowTransition] = useState(false);
+  const [usedTeams, setUsedTeams] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
-  if (!currentRoom || !currentPlayer) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground mb-4">Sessão não encontrada</p>
-            <Link to="/">
-              <Button>Voltar ao Início</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Debug: Verificar roomId
+  useEffect(() => {
+    console.log("🔍 SelectTeam carregado");
+    console.log("📍 RoomId da URL:", roomId);
+    console.log("📍 URL completa:", window.location.href);
+  }, [roomId]);
 
-  const handleConfirm = () => {
+  // Buscar dados da sala
+  useEffect(() => {
+    const fetchRoom = async () => {
+      // Verificação mais robusta do roomId
+      if (!roomId || roomId === "undefined" || roomId.trim() === "") {
+        console.error("❌ RoomId inválido:", roomId);
+        toast({
+          title: "Erro",
+          description: "ID da sala não encontrado. Redirecionando...",
+          variant: "destructive",
+        });
+        setTimeout(() => navigate("/dashboard"), 2000);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        console.log("🔍 Buscando sala com ID:", roomId);
+
+        // Buscar dados da sala
+        const roomResponse = await roomAPI.getById(roomId);
+        console.log("📦 Resposta da sala:", roomResponse);
+
+        if (roomResponse.success) {
+          setRoomData(roomResponse.data);
+        }
+
+        // Buscar times já usados
+        const usedTeamsResponse = await roomAPI.getUsedTeams(roomId);
+        console.log("📦 Resposta times usados:", usedTeamsResponse);
+
+        if (usedTeamsResponse.success) {
+          setUsedTeams(usedTeamsResponse.data.usedTeams);
+          console.log("✅ Times já usados:", usedTeamsResponse.data.usedTeams);
+        }
+      } catch (error) {
+        console.error("❌ Erro ao buscar sala:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar a sala.",
+          variant: "destructive",
+        });
+        setTimeout(() => navigate("/dashboard"), 2000);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRoom();
+  }, [roomId, navigate]);
+
+  const handleConfirm = async () => {
     if (!selectedTeamId) {
       toast({
         title: "Selecione um time",
@@ -42,8 +152,39 @@ export default function SelectTeam() {
       return;
     }
 
-    selectTeam(selectedTeamId);
-    setShowTransition(true);
+    if (!roomId) return;
+
+    const selectedTeam = availableTeams.find((t) => t.id === selectedTeamId);
+    if (!selectedTeam) return;
+
+    setIsSaving(true);
+    try {
+      console.log("💾 Salvando seleção:", {
+        roomId,
+        teamId: selectedTeamId,
+        teamName: selectedTeam.name,
+      });
+
+      // Chamar API para salvar a seleção do time
+      const response = await roomAPI.selectTeam(
+        roomId,
+        selectedTeamId,
+        selectedTeam.name
+      );
+
+      if (response.success) {
+        console.log("✅ Time salvo com sucesso");
+        setShowTransition(true);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar time:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar sua escolha.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
   };
 
   const handleTransitionComplete = () => {
@@ -51,17 +192,47 @@ export default function SelectTeam() {
       title: "Time selecionado!",
       description: "Boa sorte nesta rodada!",
     });
-    navigate("/survival-room");
+    navigate(`/survival-room/${roomId}`);
   };
 
-  const isTeamUsed = (teamId: string) =>
-    currentPlayer.selectedTeams.includes(teamId);
+  const isTeamUsed = (teamId: string) => usedTeams.includes(teamId);
 
-  // Filter teams by current room's league
-  const availableTeams = getTeamsByLeague(currentRoom.league);
+  // Pegar times disponíveis baseado na liga da sala
+  const availableTeams: Team[] = roomData
+    ? mockTeamsByLeague[roomData.league as keyof typeof mockTeamsByLeague] || []
+    : [];
+
   const selectedTeam = selectedTeamId
-    ? teams.find((t) => t.id === selectedTeamId)
+    ? availableTeams.find((t) => t.id === selectedTeamId)
     : null;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Carregando sala...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!roomData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <p className="text-muted-foreground mb-4">Sala não encontrada</p>
+            <Link to="/dashboard">
+              <Button>Voltar ao Dashboard</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -91,7 +262,7 @@ export default function SelectTeam() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Link to="/room">
+            <Link to={`/join-room/${roomId}`}>
               <Button variant="ghost" className="mb-6 hover:bg-primary/10">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar
@@ -111,7 +282,7 @@ export default function SelectTeam() {
                   <div className="flex items-center justify-center gap-3">
                     <Trophy className="h-8 w-8 text-primary animate-pulse" />
                     <CardTitle className="text-4xl md:text-5xl font-black bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
-                      Rodada {currentRoom.currentRound}
+                      Rodada {roomData.currentRound}
                     </CardTitle>
                     <Trophy className="h-8 w-8 text-primary animate-pulse" />
                   </div>
@@ -120,6 +291,12 @@ export default function SelectTeam() {
                     <span className="text-primary font-bold">VENCER</span> nesta
                     rodada
                   </p>
+                  <div className="flex items-center justify-center gap-4 text-sm">
+                    <Badge variant="outline">Sala: {roomData.name}</Badge>
+                    <Badge variant="outline">
+                      Prêmio: R$ {roomData.prizePool.toFixed(2)}
+                    </Badge>
+                  </div>
                 </CardHeader>
               </Card>
             </motion.div>
@@ -167,7 +344,6 @@ export default function SelectTeam() {
                           }
                         `}
                         >
-                          {/* Glow effect on selection */}
                           {selected && (
                             <motion.div
                               className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20"
@@ -296,12 +472,21 @@ export default function SelectTeam() {
                   >
                     <Button
                       onClick={handleConfirm}
-                      disabled={!selectedTeamId}
+                      disabled={!selectedTeamId || isSaving}
                       size="lg"
                       className="w-full mt-6 text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300"
                     >
-                      <Check className="mr-2 h-6 w-6" />
-                      Confirmar Escolha
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="mr-2 h-6 w-6" />
+                          Confirmar Escolha
+                        </>
+                      )}
                     </Button>
                   </motion.div>
                 </CardContent>
@@ -321,13 +506,13 @@ export default function SelectTeam() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  {currentPlayer.selectedTeams.length === 0 ? (
+                  {usedTeams.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
                       Nenhum time usado ainda
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-3">
-                      {currentPlayer.selectedTeams.map((teamId, index) => {
+                      {usedTeams.map((teamId, index) => {
                         const team = availableTeams.find(
                           (t) => t.id === teamId
                         );
