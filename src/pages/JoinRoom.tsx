@@ -134,8 +134,15 @@ export default function JoinRoom() {
               }
               return false;
             });
-            setHasJoined(playerInRoom || isUserAdmin);
-            console.log("✓ Já entrou na sala?", playerInRoom || isUserAdmin);
+
+            // Se é admin, sempre marca como entrado
+            const hasJoinedRoom = playerInRoom || isUserAdmin;
+            setHasJoined(hasJoinedRoom);
+            console.log("✓ Já entrou na sala?", hasJoinedRoom);
+
+            if (isUserAdmin && !playerInRoom) {
+              console.log("⚠️ Admin não está na lista de jogadores ainda");
+            }
           }
         } else {
           console.error("❌ Resposta inválida:", response);
