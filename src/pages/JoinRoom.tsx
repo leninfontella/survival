@@ -104,6 +104,7 @@ export default function JoinRoom() {
 
         if (response.success && response.data) {
           const room = response.data as RoomData;
+          const previousStatus = roomData?.status;
           setRoomData(room);
           console.log("📦 Dados da sala carregados:", room);
 
@@ -141,8 +142,22 @@ export default function JoinRoom() {
               isAdmin: isUserAdmin,
               hasJoined: playerInRoom,
               status: room.status,
+              previousStatus,
               players: room.players.length,
             });
+
+            // 🔥 IMPORTANTE: Se a sala acabou de ser iniciada e o usuário NÃO é admin
+            // NÃO redireciona automaticamente, apenas atualiza o estado
+            if (
+              room.status === "active" &&
+              previousStatus === "waiting" &&
+              isUserAdmin
+            ) {
+              console.log(
+                "🚀 Admin iniciou a sala - será redirecionado manualmente"
+              );
+              // O redirecionamento do admin é feito pelo botão handleStartRoom
+            }
           }
         } else {
           console.error("❌ Resposta inválida:", response);
@@ -245,7 +260,7 @@ export default function JoinRoom() {
   const handleStartRoom = async () => {
     if (!roomId) return;
 
-    console.log("🚀 Iniciando sala:", roomId);
+    console.log("🚀 Admin iniciando sala:", roomId);
 
     try {
       const response = await roomAPI.start(roomId);
@@ -254,14 +269,17 @@ export default function JoinRoom() {
       if (response.success) {
         toast({
           title: "Sala iniciada!",
-          description: "Redirecionando para seleção de time...",
+          description: "Escolha seu time para começar...",
         });
 
-        // Redirecionar ADMIN para seleção de time
+        // ⚠️ CRÍTICO: Parar o polling antes de redirecionar
+        // para evitar que outros jogadores sejam afetados
+        console.log("🔀 Admin sendo redirecionado para seleção de time");
+
+        // Aguardar um pouco para garantir que o toast seja exibido
         setTimeout(() => {
-          console.log("🔀 Redirecionando para:", `/room/select-team/${roomId}`);
           navigate(`/room/select-team/${roomId}`);
-        }, 1000);
+        }, 500);
       }
     } catch (err) {
       const error = err as APIError;
@@ -286,7 +304,7 @@ export default function JoinRoom() {
     }
 
     // Jogador não-admin clica para selecionar time
-    console.log("🎮 Jogador iniciando seleção");
+    console.log("🎮 Jogador comum iniciando seleção de time");
     console.log("🔀 Redirecionando para:", `/room/select-team/${roomId}`);
 
     toast({

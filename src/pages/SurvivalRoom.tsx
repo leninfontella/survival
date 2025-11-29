@@ -15,6 +15,7 @@ import {
   Home,
   Zap,
   Loader2,
+  Clock,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -124,6 +125,19 @@ export default function SurvivalRoom() {
 
   const activePlayers = roomData.players.filter((p) => !p.isEliminated);
   const eliminatedPlayers = roomData.players.filter((p) => p.isEliminated);
+
+  // 🔥 FILTRAR: Apenas jogadores que JÁ SELECIONARAM um time para a rodada atual
+  const playersWithSelection = activePlayers.filter((p) => {
+    return p.selectedTeams && p.selectedTeams.length > 0;
+  });
+
+  const playersWithoutSelection = activePlayers.filter((p) => {
+    return !p.selectedTeams || p.selectedTeams.length === 0;
+  });
+
+  console.log("📊 Players ativos:", activePlayers.length);
+  console.log("✅ Players com seleção:", playersWithSelection.length);
+  console.log("⏳ Players aguardando seleção:", playersWithoutSelection.length);
 
   const handleNextRound = () => {
     setIsProcessing(true);
@@ -288,10 +302,10 @@ export default function SurvivalRoom() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">
-                        Sobreviventes
+                        Com Time Selecionado
                       </p>
                       <p className="text-3xl font-bold text-primary">
-                        {activePlayers.length}
+                        {playersWithSelection.length}
                       </p>
                     </div>
                     <Target className="h-12 w-12 text-primary opacity-70" />
@@ -335,80 +349,19 @@ export default function SurvivalRoom() {
                 <CardHeader className="border-b border-border/50">
                   <div className="flex items-center gap-2">
                     <Target className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-xl">Sobreviventes</CardTitle>
+                    <CardTitle className="text-xl">
+                      Jogadores com Time Selecionado
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {activePlayers.map((player, index) => {
-                      const lastSelection =
-                        player.selectedTeams[player.selectedTeams.length - 1];
-                      const lastTeam = lastSelection
-                        ? getTeamById(lastSelection.teamId)
-                        : null;
-
-                      return (
-                        <motion.div
-                          key={player._id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 hover:border-primary/40 transition-all"
-                        >
-                          <div className="flex items-center gap-3">
-                            {lastTeam ? (
-                              <div className="w-12 h-12 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center p-1.5 shadow-lg">
-                                <img
-                                  src={lastTeam.logo}
-                                  alt={lastTeam.name}
-                                  className="w-full h-full object-contain"
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
-                                {player.name.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <div>
-                              <p className="font-semibold text-foreground">
-                                {player.name}
-                              </p>
-                              {lastSelection && (
-                                <p className="text-sm text-primary font-medium mt-0.5">
-                                  {lastSelection.teamName}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Eliminated Players */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Card className="bg-gradient-to-br from-card to-background/50 border-destructive/30 shadow-xl">
-                <CardHeader className="border-b border-border/50">
-                  <div className="flex items-center gap-2">
-                    <Skull className="h-5 w-5 text-destructive" />
-                    <CardTitle className="text-xl">Eliminados</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  {eliminatedPlayers.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      Nenhum eliminado ainda
-                    </p>
-                  ) : (
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                      {eliminatedPlayers.map((player, index) => {
+                    {playersWithSelection.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        Nenhum jogador selecionou time ainda
+                      </p>
+                    ) : (
+                      playersWithSelection.map((player, index) => {
                         const lastSelection =
                           player.selectedTeams[player.selectedTeams.length - 1];
                         const lastTeam = lastSelection
@@ -418,14 +371,14 @@ export default function SurvivalRoom() {
                         return (
                           <motion.div
                             key={player._id}
-                            initial={{ opacity: 0, x: 20 }}
+                            initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-destructive/10 to-transparent border border-destructive/20 opacity-60"
+                            className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 hover:border-primary/40 transition-all"
                           >
                             <div className="flex items-center gap-3">
                               {lastTeam ? (
-                                <div className="w-12 h-12 rounded-full bg-background border-2 border-destructive/30 flex items-center justify-center p-1.5 shadow-lg opacity-60 grayscale">
+                                <div className="w-12 h-12 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center p-1.5 shadow-lg">
                                   <img
                                     src={lastTeam.logo}
                                     alt={lastTeam.name}
@@ -433,25 +386,81 @@ export default function SurvivalRoom() {
                                   />
                                 </div>
                               ) : (
-                                <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center font-bold text-destructive">
+                                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
                                   {player.name.charAt(0).toUpperCase()}
                                 </div>
                               )}
                               <div>
-                                <p className="font-semibold line-through">
+                                <p className="font-semibold text-foreground">
                                   {player.name}
                                 </p>
                                 {lastSelection && (
-                                  <span className="text-xs text-muted-foreground line-through">
+                                  <p className="text-sm text-primary font-medium mt-0.5">
                                     {lastSelection.teamName}
-                                  </span>
+                                  </p>
                                 )}
                               </div>
                             </div>
-                            <Badge variant="destructive">Eliminado</Badge>
                           </motion.div>
                         );
-                      })}
+                      })
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Players Aguardando Seleção */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card className="bg-gradient-to-br from-card to-background/50 border-amber-500/30 shadow-xl">
+                <CardHeader className="border-b border-border/50">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-amber-500" />
+                    <CardTitle className="text-xl">
+                      Aguardando Seleção
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {playersWithoutSelection.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      Todos os jogadores já selecionaram
+                    </p>
+                  ) : (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                      {playersWithoutSelection.map((player, index) => (
+                        <motion.div
+                          key={player._id}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center font-bold text-amber-500">
+                              {player.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">
+                                {player.name}
+                              </p>
+                              <p className="text-xs text-amber-600">
+                                Aguardando seleção de time...
+                              </p>
+                            </div>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500 text-amber-500"
+                          >
+                            Pendente
+                          </Badge>
+                        </motion.div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
