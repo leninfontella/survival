@@ -135,14 +135,14 @@ export default function JoinRoom() {
               return false;
             });
 
-            // Se é admin, sempre marca como entrado
-            const hasJoinedRoom = playerInRoom || isUserAdmin;
-            setHasJoined(hasJoinedRoom);
-            console.log("✓ Já entrou na sala?", hasJoinedRoom);
-
-            if (isUserAdmin && !playerInRoom) {
-              console.log("⚠️ Admin não está na lista de jogadores ainda");
-            }
+            setHasJoined(playerInRoom);
+            console.log("✓ Já entrou na sala?", playerInRoom);
+            console.log("📊 Estado atual:", {
+              isAdmin: isUserAdmin,
+              hasJoined: playerInRoom,
+              status: room.status,
+              players: room.players.length,
+            });
           }
         } else {
           console.error("❌ Resposta inválida:", response);
@@ -483,6 +483,7 @@ export default function JoinRoom() {
 
           {/* Formulário de Entrada ou Status */}
           {!hasJoined && !isAdmin ? (
+            // Jogador comum que ainda não entrou - mostrar formulário
             <Card className="border-border/50 bg-card/50 backdrop-blur">
               <CardHeader>
                 <CardTitle>Entrar na Sala</CardTitle>
@@ -592,8 +593,119 @@ export default function JoinRoom() {
                 )}
               </CardContent>
             </Card>
+          ) : !hasJoined && isAdmin ? (
+            // Admin que ainda não pagou - mostrar formulário de pagamento
+            <Card className="border-primary/50 bg-primary/5">
+              <CardHeader>
+                <CardTitle>Confirmar Participação</CardTitle>
+                <CardDescription>
+                  Como administrador, você também precisa pagar para participar
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!showPayment ? (
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Seu Nome</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                        placeholder="Digite seu nome"
+                        required
+                      />
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-5 w-5 text-accent" />
+                          <span className="font-semibold">Total a Pagar</span>
+                        </div>
+                        <span className="text-2xl font-bold text-accent">
+                          R$ {totalPrice.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" size="lg">
+                      <Users className="mr-2 h-5 w-5" />
+                      Confirmar Participação
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold mb-2">
+                        Pagamento via PIX
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Escaneie o QR Code ou copie o código PIX
+                      </p>
+                    </div>
+
+                    <div className="p-6 rounded-lg bg-accent/10 border border-accent/20 text-center">
+                      <div className="flex justify-center mb-4">
+                        <div className="w-48 h-48 bg-white p-4 rounded-lg flex items-center justify-center">
+                          <QrCode className="w-full h-full text-foreground" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="font-semibold">
+                          Valor: R$ {totalPrice.toFixed(2)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Nome: {formData.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>Código PIX Copia e Cola</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={pixCode}
+                          readOnly
+                          className="font-mono text-xs"
+                        />
+                        <Button onClick={handleCopyPix} variant="outline">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => setShowPayment(false)}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Voltar
+                      </Button>
+                      <Button
+                        onClick={handlePaymentConfirm}
+                        className="flex-1"
+                        size="lg"
+                        disabled={isJoining}
+                      >
+                        {isJoining ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Confirmando...
+                          </>
+                        ) : (
+                          "Confirmar Pagamento"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           ) : roomData.status === "waiting" ? (
-            // Sala ainda não iniciada - aguardando
+            // Todos já pagaram e sala ainda não iniciou
             <Card className="border-accent/50 bg-accent/5">
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">

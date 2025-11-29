@@ -30,35 +30,10 @@ exports.createRoom = async (req, res) => {
     console.log("✅ Sala criada:", room.name);
     console.log("👑 Criador:", req.user.name);
 
-    // Criar jogador automaticamente para o admin/criador
-    const adminPlayer = await Player.create({
-      user: req.user.id,
-      room: room._id,
-      name: req.user.name,
-      paymentStatus: "paid", // Admin não precisa pagar
-    });
-
-    console.log("✅ Admin adicionado como jogador:", adminPlayer.name);
-
-    // Adicionar admin à lista de jogadores da sala
-    room.players.push(adminPlayer._id);
-    room.prizePool = room.players.length * room.entryPrice;
-    await room.save();
-
-    console.log("💰 Prize pool atualizado:", room.prizePool);
-
-    // Buscar sala completa com jogadores
-    const roomWithPlayers = await Room.findById(room._id)
-      .populate("createdBy", "name email")
-      .populate({
-        path: "players",
-        select: "name isEliminated user",
-      });
-
     res.status(201).json({
       success: true,
-      message: "Sala criada com sucesso! Você já está na sala.",
-      data: roomWithPlayers,
+      message: "Sala criada com sucesso!",
+      data: room,
     });
   } catch (error) {
     console.error("Erro ao criar sala:", error);
