@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,15 +11,15 @@ import {
   Users,
   Target,
   Crown,
-  ArrowRight,
   Home,
   Zap,
   Loader2,
   Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { roomAPI } from "@/services/api";
+import { roomAPI, authAPI } from "@/services/api";
 import heroBg from "@/assets/hero-bg.jpg";
 
 interface RoomData {
@@ -34,6 +34,12 @@ interface RoomData {
     _id: string;
     name: string;
     isEliminated: boolean;
+    user?:
+      | {
+          _id: string;
+          id?: string;
+        }
+      | string;
     selectedTeams: Array<{
       teamId: string;
       teamName: string;
@@ -49,51 +55,106 @@ export default function SurvivalRoom() {
   const { teams } = useGame();
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Buscar userId ao montar
+  useEffect(() => {
+    const userId = authAPI.getCurrentUserId();
+    setCurrentUserId(userId);
+  }, []);
+
+  // Verificar se o usuário atual é um jogador específico
+  const isCurrentUser = useCallback(
+    (player: RoomData["players"][0]) => {
+      if (!currentUserId) return false;
+
+      if (typeof player.user === "string") {
+        return player.user === currentUserId;
+      } else if (player.user) {
+        return (
+          player.user._id === currentUserId || player.user.id === currentUserId
+        );
+      }
+      return false;
+    },
+    [currentUserId]
+  );
+
+  // Handler para navegar para seleção de time
+  const handleSelectTeam = useCallback(() => {
+    if (!roomId) return;
+
+    toast({
+      title: "Selecione seu time",
+      description: "Escolha sabiamente para continuar no jogo!",
+    });
+
+    navigate(`/room/select-team/${roomId}`);
+  }, [roomId, navigate]);
 
   // Buscar dados da sala
   useEffect(() => {
-    const fetchRoom = async () => {
-      if (!roomId) {
-        toast({
-          title: "Erro",
-          description: "ID da sala não encontrado.",
-          variant: "destructive",
-        });
-        navigate("/dashboard");
-        return;
-      }
+    if (!roomId) {
+      toast({
+        title: "Erro",
+        description: "ID da sala não encontrado.",
+        variant: "destructive",
+      });
+      navigate("/dashboard");
+      return;
+    }
 
-      setIsLoading(true);
+    const fetchRoom = async () => {
       try {
         const response = await roomAPI.getById(roomId);
-        if (response.success) {
+        if (response.success && isMountedRef.current) {
           setRoomData(response.data);
         }
       } catch (error) {
         console.error("Erro ao buscar sala:", error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar a sala.",
-          variant: "destructive",
-        });
-        navigate("/dashboard");
+        if (isMountedRef.current) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar a sala.",
+            variant: "destructive",
+          });
+          navigate("/dashboard");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
+    // Buscar inicialmente
     fetchRoom();
 
-    // Polling para atualizar dados
+    // Polling para atualizar dados a cada 5 segundos
     const interval = setInterval(() => {
-      if (roomData) {
+      if (isMountedRef.current) {
         fetchRoom();
       }
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(interval);
+    };
   }, [roomId, navigate]);
+
+  // Cleanup no unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const getTeamById = useCallback(
+    (teamId: string) => teams.find((t) => t.id === teamId),
+    [teams]
+  );
 
   if (isLoading) {
     return (
@@ -126,36 +187,28 @@ export default function SurvivalRoom() {
   const activePlayers = roomData.players.filter((p) => !p.isEliminated);
   const eliminatedPlayers = roomData.players.filter((p) => p.isEliminated);
 
-  // 🔥 FILTRAR: Apenas jogadores que JÁ SELECIONARAM um time para a rodada atual
+  // Filtrar jogadores com base na rodada atual
   const playersWithSelection = activePlayers.filter((p) => {
-    return p.selectedTeams && p.selectedTeams.length > 0;
+    if (!p.selectedTeams || p.selectedTeams.length === 0) return false;
+    return p.selectedTeams.some((s) => s.round === roomData.currentRound);
   });
 
   const playersWithoutSelection = activePlayers.filter((p) => {
-    return !p.selectedTeams || p.selectedTeams.length === 0;
+    if (!p.selectedTeams || p.selectedTeams.length === 0) return true;
+    return !p.selectedTeams.some((s) => s.round === roomData.currentRound);
   });
-
-  console.log("📊 Players ativos:", activePlayers.length);
-  console.log("✅ Players com seleção:", playersWithSelection.length);
-  console.log("⏳ Players aguardando seleção:", playersWithoutSelection.length);
-
-  const handleNextRound = () => {
-    setIsProcessing(true);
-    // TODO: Implementar lógica de próxima rodada
-    setTimeout(() => {
-      setIsProcessing(false);
-      toast({
-        title: "Próxima rodada",
-        description: "Funcionalidade em desenvolvimento.",
-      });
-    }, 2000);
-  };
-
-  const getTeamById = (teamId: string) => teams.find((t) => t.id === teamId);
 
   const isGameFinished =
     roomData.status === "finished" || activePlayers.length === 1;
   const winner = activePlayers.length === 1 ? activePlayers[0] : null;
+
+  // Verificar se o usuário atual precisa selecionar time
+  const currentUserPlayer = activePlayers.find((p) => isCurrentUser(p));
+  const currentUserNeedsSelection =
+    currentUserPlayer &&
+    !currentUserPlayer.selectedTeams?.some(
+      (s) => s.round === roomData.currentRound
+    );
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -231,6 +284,58 @@ export default function SurvivalRoom() {
               </CardHeader>
             </Card>
           </motion.div>
+
+          {/* Call to Action - Se o usuário precisa selecionar */}
+          <AnimatePresence>
+            {currentUserNeedsSelection && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card className="border-2 border-amber-500 bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-amber-500/5 shadow-2xl shadow-amber-500/20">
+                  <CardContent className="py-8">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                      <div className="flex items-center gap-4">
+                        <motion.div
+                          animate={{
+                            scale: [1, 1.1, 1],
+                            rotate: [0, 5, -5, 0],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
+                          className="w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center shadow-lg"
+                        >
+                          <Clock className="h-8 w-8 text-white" />
+                        </motion.div>
+                        <div>
+                          <h3 className="text-2xl font-bold text-amber-600 mb-1">
+                            ⚠️ Você ainda não selecionou seu time!
+                          </h3>
+                          <p className="text-muted-foreground">
+                            Selecione seu time para a rodada{" "}
+                            {roomData.currentRound} agora
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleSelectTeam}
+                        size="lg"
+                        className="bg-amber-500 hover:bg-amber-600 text-white shadow-xl hover:shadow-2xl transition-all"
+                      >
+                        <Target className="mr-2 h-5 w-5" />
+                        Selecionar Time Agora
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Winner Card */}
           <AnimatePresence>
@@ -308,7 +413,7 @@ export default function SurvivalRoom() {
                         {playersWithSelection.length}
                       </p>
                     </div>
-                    <Target className="h-12 w-12 text-primary opacity-70" />
+                    <CheckCircle2 className="h-12 w-12 text-primary opacity-70" />
                   </div>
                 </CardContent>
               </Card>
@@ -348,7 +453,7 @@ export default function SurvivalRoom() {
               <Card className="bg-gradient-to-br from-card to-background/50 border-primary/30 shadow-xl">
                 <CardHeader className="border-b border-border/50">
                   <div className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-primary" />
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
                     <CardTitle className="text-xl">
                       Jogadores com Time Selecionado
                     </CardTitle>
@@ -362,10 +467,11 @@ export default function SurvivalRoom() {
                       </p>
                     ) : (
                       playersWithSelection.map((player, index) => {
-                        const lastSelection =
-                          player.selectedTeams[player.selectedTeams.length - 1];
-                        const lastTeam = lastSelection
-                          ? getTeamById(lastSelection.teamId)
+                        const currentRoundSelection = player.selectedTeams.find(
+                          (s) => s.round === roomData.currentRound
+                        );
+                        const currentTeam = currentRoundSelection
+                          ? getTeamById(currentRoundSelection.teamId)
                           : null;
 
                         return (
@@ -377,12 +483,22 @@ export default function SurvivalRoom() {
                             className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 hover:border-primary/40 transition-all"
                           >
                             <div className="flex items-center gap-3">
-                              {lastTeam ? (
-                                <div className="w-12 h-12 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center p-1.5 shadow-lg">
+                              {currentTeam ? (
+                                <div className="w-12 h-12 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center p-1.5 shadow-lg overflow-hidden">
                                   <img
-                                    src={lastTeam.logo}
-                                    alt={lastTeam.name}
+                                    src={currentTeam.logo}
+                                    alt={currentTeam.name}
                                     className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                      const target = e.currentTarget;
+                                      target.style.display = "none";
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `<span class="text-primary font-bold text-lg">${currentTeam.name
+                                          .charAt(0)
+                                          .toUpperCase()}</span>`;
+                                      }
+                                    }}
                                   />
                                 </div>
                               ) : (
@@ -394,13 +510,17 @@ export default function SurvivalRoom() {
                                 <p className="font-semibold text-foreground">
                                   {player.name}
                                 </p>
-                                {lastSelection && (
+                                {currentRoundSelection && (
                                   <p className="text-sm text-primary font-medium mt-0.5">
-                                    {lastSelection.teamName}
+                                    {currentRoundSelection.teamName}
                                   </p>
                                 )}
                               </div>
                             </div>
+                            <Badge variant="default" className="bg-green-500">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Confirmado
+                            </Badge>
                           </motion.div>
                         );
                       })
@@ -432,35 +552,65 @@ export default function SurvivalRoom() {
                     </p>
                   ) : (
                     <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                      {playersWithoutSelection.map((player, index) => (
-                        <motion.div
-                          key={player._id}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center font-bold text-amber-500">
-                              {player.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-foreground">
-                                {player.name}
-                              </p>
-                              <p className="text-xs text-amber-600">
-                                Aguardando seleção de time...
-                              </p>
-                            </div>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className="border-amber-500 text-amber-500"
+                      {playersWithoutSelection.map((player, index) => {
+                        const isThisUser = isCurrentUser(player);
+
+                        return (
+                          <motion.div
+                            key={player._id}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className={`flex items-center justify-between p-4 rounded-lg border ${
+                              isThisUser
+                                ? "bg-gradient-to-r from-amber-500/20 to-amber-500/10 border-amber-500/40"
+                                : "bg-gradient-to-r from-amber-500/10 to-transparent border-amber-500/20"
+                            }`}
                           >
-                            Pendente
-                          </Badge>
-                        </motion.div>
-                      ))}
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center font-bold text-amber-500">
+                                {player.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-foreground">
+                                    {player.name}
+                                  </span>
+                                  {isThisUser && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs border-primary text-primary"
+                                    >
+                                      Você
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-amber-600 mt-1">
+                                  Aguardando seleção de time...
+                                </p>
+                              </div>
+                            </div>
+
+                            {isThisUser ? (
+                              <Button
+                                onClick={handleSelectTeam}
+                                size="sm"
+                                className="bg-amber-500 hover:bg-amber-600 text-white ml-2"
+                              >
+                                <Target className="w-4 h-4 mr-1" />
+                                Selecionar
+                              </Button>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="border-amber-500 text-amber-500"
+                              >
+                                Pendente
+                              </Badge>
+                            )}
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
