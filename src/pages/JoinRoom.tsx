@@ -22,6 +22,8 @@ import {
   Clock,
   Loader2,
   AlertCircle,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { roomAPI, authAPI } from "@/services/api";
@@ -38,6 +40,7 @@ interface Player {
   _id: string;
   name: string;
   isEliminated: boolean;
+  isReady: boolean;
   selectedTeams?: string[];
   user?: User | string;
 }
@@ -74,13 +77,14 @@ export default function JoinRoom() {
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
+  const [isTogglingReady, setIsTogglingReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
   });
   const [showPayment, setShowPayment] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
+  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [pixCode] = useState(
     "00020126580014BR.GOV.BCB.PIX0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Bolao Survivor6009SAO PAULO62070503***6304ABCD"
   );
@@ -108,26 +112,12 @@ export default function JoinRoom() {
           setRoomData(room);
           console.log("📦 Dados da sala carregados:", room);
 
-          // Verificar se o usuário é o criador (admin)
+          // Verificar se o usuário já está na sala
           const userId = authAPI.getCurrentUserId();
           console.log("👤 UserId atual:", userId);
-          console.log("👑 Criador da sala:", room.createdBy);
 
-          // Verificar diferentes formatos de ID do criador
-          let creatorId: string;
-          if (typeof room.createdBy === "string") {
-            creatorId = room.createdBy;
-          } else {
-            creatorId = room.createdBy._id || room.createdBy.id || "";
-          }
-
-          const isUserAdmin = creatorId === userId;
-          setIsAdmin(isUserAdmin);
-          console.log("🔐 É admin?", isUserAdmin);
-
-          // Verificar se o usuário já está na sala
           if (userId && room.players) {
-            const playerInRoom = room.players.some((p: Player) => {
+            const playerInRoom = room.players.find((p: Player) => {
               if (typeof p.user === "string") {
                 return p.user === userId;
               } else if (p.user) {
@@ -136,27 +126,33 @@ export default function JoinRoom() {
               return false;
             });
 
-            setHasJoined(playerInRoom);
-            console.log("✓ Já entrou na sala?", playerInRoom);
+            if (playerInRoom) {
+              setHasJoined(true);
+              setCurrentPlayer(playerInRoom);
+              console.log("✓ Jogador encontrado na sala:", playerInRoom);
+              console.log("🎮 Status ready:", playerInRoom.isReady);
+            }
+
             console.log("📊 Estado atual:", {
-              isAdmin: isUserAdmin,
-              hasJoined: playerInRoom,
+              hasJoined: !!playerInRoom,
+              isReady: playerInRoom?.isReady,
               status: room.status,
               previousStatus,
               players: room.players.length,
             });
 
-            // 🔥 IMPORTANTE: Se a sala acabou de ser iniciada e o usuário NÃO é admin
-            // NÃO redireciona automaticamente, apenas atualiza o estado
-            if (
-              room.status === "active" &&
-              previousStatus === "waiting" &&
-              isUserAdmin
-            ) {
+            // 🔥 Se a sala foi iniciada, redirecionar para seleção de time
+            if (room.status === "active" && previousStatus === "waiting") {
               console.log(
-                "🚀 Admin iniciou a sala - será redirecionado manualmente"
+                "🚀 Sala iniciada! Redirecionando para seleção de time..."
               );
-              // O redirecionamento do admin é feito pelo botão handleStartRoom
+              toast({
+                title: "Sala iniciada!",
+                description: "Todos estão prontos. Escolha seu time!",
+              });
+              setTimeout(() => {
+                navigate(`/room/select-team/${roomId}`);
+              }, 1500);
             }
           }
         } else {
@@ -185,14 +181,14 @@ export default function JoinRoom() {
     // Buscar sala inicialmente
     fetchRoom();
 
-    // Polling para atualizar a lista de jogadores a cada 5 segundos
+    // Polling para atualizar a lista de jogadores a cada 3 segundos
     const interval = setInterval(() => {
       console.log("🔄 Atualizando dados da sala...");
       fetchRoom();
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
-  }, [roomId]); // ⚠️ APENAS roomId como dependência
+  }, [roomId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,9 +226,11 @@ export default function JoinRoom() {
 
       if (response.success) {
         setHasJoined(true);
+        setCurrentPlayer(response.data.player);
         toast({
           title: "Pagamento confirmado!",
-          description: "Você entrou na sala. Aguardando outros jogadores...",
+          description:
+            "Você entrou na sala. Clique em 'Estou Pronto' para iniciar!",
         });
 
         // Atualizar dados da sala
@@ -257,62 +255,54 @@ export default function JoinRoom() {
     }
   };
 
-  const handleStartRoom = async () => {
-    if (!roomId) return;
+  const handleToggleReady = async () => {
+    if (!roomId || !currentPlayer) return;
 
-    console.log("🚀 Admin iniciando sala:", roomId);
+    setIsTogglingReady(true);
+    console.log("🎮 Alternando status ready...");
 
     try {
-      const response = await roomAPI.start(roomId);
-      console.log("✅ Sala iniciada:", response);
+      const response = await roomAPI.toggleReady(roomId);
+      console.log("✅ Toggle ready:", response);
 
       if (response.success) {
+        setCurrentPlayer(response.data.player);
+
         toast({
-          title: "Sala iniciada!",
-          description: "Escolha seu time para começar...",
+          title: response.data.player.isReady
+            ? "Você está pronto!"
+            : "Você não está mais pronto",
+          description: response.data.player.isReady
+            ? `${response.data.readyCount}/${response.data.totalCount} jogadores prontos`
+            : "Clique novamente quando estiver pronto",
         });
 
-        // ⚠️ CRÍTICO: Parar o polling antes de redirecionar
-        // para evitar que outros jogadores sejam afetados
-        console.log("🔀 Admin sendo redirecionado para seleção de time");
+        // Atualizar sala
+        if (response.data.room) {
+          setRoomData(response.data.room as RoomData);
+        }
 
-        // Aguardar um pouco para garantir que o toast seja exibido
-        setTimeout(() => {
-          navigate(`/room/select-team/${roomId}`);
-        }, 500);
+        // Se todos estão prontos, a sala será iniciada automaticamente
+        if (response.data.allReady) {
+          console.log("🎉 TODOS PRONTOS! A sala será iniciada...");
+          toast({
+            title: "🎉 Todos prontos!",
+            description: "A competição está começando!",
+          });
+        }
       }
     } catch (err) {
       const error = err as APIError;
-      console.error("❌ Erro ao iniciar sala:", error);
-      toast({
-        title: "Erro ao iniciar sala",
-        description:
-          error.response?.data?.message || "Não foi possível iniciar a sala.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handlePlayerStartSelection = () => {
-    if (!roomId) {
+      console.error("❌ Erro ao alternar ready:", error);
       toast({
         title: "Erro",
-        description: "ID da sala não encontrado.",
+        description:
+          error.response?.data?.message || "Não foi possível atualizar status.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsTogglingReady(false);
     }
-
-    // Jogador não-admin clica para selecionar time
-    console.log("🎮 Jogador comum iniciando seleção de time");
-    console.log("🔀 Redirecionando para:", `/room/select-team/${roomId}`);
-
-    toast({
-      title: "Vamos começar!",
-      description: "Escolha seu time para a primeira rodada.",
-    });
-
-    navigate(`/room/select-team/${roomId}`);
   };
 
   const handleCopyPix = () => {
@@ -385,9 +375,10 @@ export default function JoinRoom() {
   }
 
   const totalPrice = roomData.entryPrice;
-  const canStart =
-    roomData.players.length >= roomData.minPlayers &&
-    roomData.status === "waiting";
+  const readyPlayers = roomData.players.filter((p) => p.isReady).length;
+  const totalPlayers = roomData.players.length;
+  const canStart = totalPlayers >= roomData.minPlayers;
+  const allReady = canStart && readyPlayers === totalPlayers;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
@@ -411,10 +402,15 @@ export default function JoinRoom() {
                   <div className="flex gap-2 mt-2">
                     <Badge variant="secondary">
                       <Clock className="w-3 h-3 mr-1" />
-                      Aguardando Jogadores
+                      {roomData.status === "waiting"
+                        ? "Aguardando Jogadores"
+                        : "Em Andamento"}
                     </Badge>
-                    {isAdmin && (
-                      <Badge variant="default">👑 Administrador</Badge>
+                    {currentPlayer?.isReady && (
+                      <Badge variant="default" className="bg-green-500">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Pronto
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -438,7 +434,7 @@ export default function JoinRoom() {
                   <Users className="h-8 w-8 text-primary" />
                   <div>
                     <div className="text-2xl font-bold">
-                      {roomData.players.length}/{roomData.minPlayers}
+                      {totalPlayers}/{roomData.minPlayers}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Jogadores
@@ -451,12 +447,12 @@ export default function JoinRoom() {
             <Card className="border-border/50 bg-card/50 backdrop-blur">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <DollarSign className="h-8 w-8 text-accent" />
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
                   <div>
-                    <div className="text-2xl font-bold">
-                      R$ {roomData.entryPrice}
+                    <div className="text-2xl font-bold text-green-500">
+                      {readyPlayers}/{totalPlayers}
                     </div>
-                    <div className="text-sm text-muted-foreground">Entrada</div>
+                    <div className="text-sm text-muted-foreground">Prontos</div>
                   </div>
                 </div>
               </CardContent>
@@ -478,7 +474,7 @@ export default function JoinRoom() {
           </div>
 
           {/* Link de Compartilhamento */}
-          {(isAdmin || hasJoined) && (
+          {hasJoined && (
             <Card className="border-primary/50 bg-primary/5">
               <CardContent className="pt-6">
                 <Label className="mb-2 block">Link de Compartilhamento</Label>
@@ -500,8 +496,8 @@ export default function JoinRoom() {
           )}
 
           {/* Formulário de Entrada ou Status */}
-          {!hasJoined && !isAdmin ? (
-            // Jogador comum que ainda não entrou - mostrar formulário
+          {!hasJoined ? (
+            // Jogador que ainda não entrou - mostrar formulário
             <Card className="border-border/50 bg-card/50 backdrop-blur">
               <CardHeader>
                 <CardTitle>Entrar na Sala</CardTitle>
@@ -611,177 +607,98 @@ export default function JoinRoom() {
                 )}
               </CardContent>
             </Card>
-          ) : !hasJoined && isAdmin ? (
-            // Admin que ainda não pagou - mostrar formulário de pagamento
-            <Card className="border-primary/50 bg-primary/5">
-              <CardHeader>
-                <CardTitle>Confirmar Participação</CardTitle>
-                <CardDescription>
-                  Como administrador, você também precisa pagar para participar
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {!showPayment ? (
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Seu Nome</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                        placeholder="Digite seu nome"
-                        required
-                      />
-                    </div>
-
-                    <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-5 w-5 text-accent" />
-                          <span className="font-semibold">Total a Pagar</span>
-                        </div>
-                        <span className="text-2xl font-bold text-accent">
-                          R$ {totalPrice.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Button type="submit" className="w-full" size="lg">
-                      <Users className="mr-2 h-5 w-5" />
-                      Confirmar Participação
-                    </Button>
-                  </form>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="text-center">
-                      <h3 className="text-xl font-bold mb-2">
-                        Pagamento via PIX
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Escaneie o QR Code ou copie o código PIX
-                      </p>
-                    </div>
-
-                    <div className="p-6 rounded-lg bg-accent/10 border border-accent/20 text-center">
-                      <div className="flex justify-center mb-4">
-                        <div className="w-48 h-48 bg-white p-4 rounded-lg flex items-center justify-center">
-                          <QrCode className="w-full h-full text-foreground" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="font-semibold">
-                          Valor: R$ {totalPrice.toFixed(2)}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Nome: {formData.name}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label>Código PIX Copia e Cola</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={pixCode}
-                          readOnly
-                          className="font-mono text-xs"
-                        />
-                        <Button onClick={handleCopyPix} variant="outline">
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={() => setShowPayment(false)}
-                        variant="outline"
-                        className="flex-1"
-                      >
-                        Voltar
-                      </Button>
-                      <Button
-                        onClick={handlePaymentConfirm}
-                        className="flex-1"
-                        size="lg"
-                        disabled={isJoining}
-                      >
-                        {isJoining ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Confirmando...
-                          </>
-                        ) : (
-                          "Confirmar Pagamento"
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           ) : roomData.status === "waiting" ? (
-            // Todos já pagaram e sala ainda não iniciou
-            <Card className="border-accent/50 bg-accent/5">
+            // Jogador já entrou e sala ainda aguardando
+            <Card
+              className={`border-2 ${
+                allReady
+                  ? "border-green-500 bg-green-500/5"
+                  : "border-accent/50 bg-accent/5"
+              }`}
+            >
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
-                  <p className="text-muted-foreground">
-                    {roomData.players.length < roomData.minPlayers
-                      ? `Aguardando mais ${
-                          roomData.minPlayers - roomData.players.length
-                        } jogador(es) para iniciar`
-                      : "Número mínimo de jogadores atingido!"}
-                  </p>
-                  {isAdmin ? (
-                    <Button
-                      size="lg"
-                      disabled={!canStart}
-                      onClick={handleStartRoom}
-                      className="w-full md:w-auto"
-                    >
-                      <Play className="mr-2 h-5 w-5" />
-                      Iniciar Competição
-                    </Button>
-                  ) : (
-                    canStart && (
-                      <p className="text-primary font-semibold">
-                        Aguardando o administrador iniciar a competição...
+                  {!canStart ? (
+                    <>
+                      <p className="text-muted-foreground text-lg">
+                        Aguardando mais {roomData.minPlayers - totalPlayers}{" "}
+                        jogador(es)...
                       </p>
-                    )
+                      <p className="text-sm text-muted-foreground">
+                        Compartilhe o link da sala para convidar amigos!
+                      </p>
+                    </>
+                  ) : allReady ? (
+                    <>
+                      <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto animate-pulse" />
+                      <h3 className="text-2xl font-bold text-green-500">
+                        🎉 Todos Prontos!
+                      </h3>
+                      <p className="text-muted-foreground">
+                        A competição está começando...
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-center gap-4 mb-4">
+                        <div
+                          className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                            currentPlayer?.isReady
+                              ? "bg-green-500"
+                              : "bg-amber-500"
+                          }`}
+                        >
+                          {currentPlayer?.isReady ? (
+                            <CheckCircle2 className="h-8 w-8 text-white" />
+                          ) : (
+                            <XCircle className="h-8 w-8 text-white" />
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-lg font-semibold mb-2">
+                        {currentPlayer?.isReady
+                          ? "Você está pronto!"
+                          : "Clique no botão quando estiver pronto"}
+                      </p>
+                      <p className="text-muted-foreground mb-4">
+                        {readyPlayers}/{totalPlayers} jogadores prontos
+                      </p>
+                      <Button
+                        onClick={handleToggleReady}
+                        disabled={isTogglingReady}
+                        size="lg"
+                        className="w-full md:w-auto"
+                        variant={currentPlayer?.isReady ? "outline" : "default"}
+                      >
+                        {isTogglingReady ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Processando...
+                          </>
+                        ) : currentPlayer?.isReady ? (
+                          <>
+                            <XCircle className="mr-2 h-5 w-5" />
+                            Cancelar Ready
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="mr-2 h-5 w-5" />
+                            Estou Pronto!
+                          </>
+                        )}
+                      </Button>
+                      {canStart && (
+                        <p className="text-sm text-primary mt-4">
+                          ⏳ Aguardando todos os jogadores ficarem prontos para
+                          iniciar...
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            // Sala já iniciada - botão para selecionar time
-            <Card className="border-primary/50 bg-primary/5">
-              <CardContent className="pt-6">
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Trophy className="h-6 w-6 text-primary animate-pulse" />
-                    <h3 className="text-xl font-bold text-primary">
-                      Competição Iniciada!
-                    </h3>
-                    <Trophy className="h-6 w-6 text-primary animate-pulse" />
-                  </div>
-                  <p className="text-muted-foreground">
-                    Rodada {roomData.currentRound} - É hora de escolher seu
-                    time!
-                  </p>
-                  <Button
-                    size="lg"
-                    onClick={handlePlayerStartSelection}
-                    className="w-full md:w-auto"
-                  >
-                    <Play className="mr-2 h-5 w-5" />
-                    INICIAR SOBREVIVÊNCIA
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          ) : null}
 
           {/* Lista de Jogadores */}
           <Card className="border-border/50 bg-card/50 backdrop-blur">
@@ -806,7 +723,24 @@ export default function JoinRoom() {
                         </div>
                         <span>{player.name}</span>
                       </div>
-                      <Badge variant="default">Ativo</Badge>
+                      {roomData.status === "waiting" && (
+                        <Badge
+                          variant={player.isReady ? "default" : "secondary"}
+                          className={player.isReady ? "bg-green-500" : ""}
+                        >
+                          {player.isReady ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Pronto
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="w-3 h-3 mr-1" />
+                              Aguardando
+                            </>
+                          )}
+                        </Badge>
+                      )}
                     </div>
                   ))
                 )}

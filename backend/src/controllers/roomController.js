@@ -60,7 +60,7 @@ exports.getRooms = async (req, res) => {
       .populate("createdBy", "name email")
       .populate({
         path: "players",
-        select: "name isEliminated",
+        select: "name isEliminated isReady",
       })
       .sort({ createdAt: -1 });
 
@@ -90,7 +90,7 @@ exports.getRoomById = async (req, res) => {
       .populate("createdBy", "name email")
       .populate({
         path: "players",
-        select: "name isEliminated selectedTeams user",
+        select: "name isEliminated isReady selectedTeams user",
         populate: {
           path: "user",
           select: "name email",
@@ -176,6 +176,7 @@ exports.joinRoom = async (req, res) => {
       user: userId,
       room: roomId,
       name: name || req.user.name,
+      isReady: false,
     });
 
     // Adicionar player à sala
@@ -188,7 +189,7 @@ exports.joinRoom = async (req, res) => {
       .populate("createdBy", "name email")
       .populate({
         path: "players",
-        select: "name isEliminated user",
+        select: "name isEliminated isReady user",
       });
 
     res.status(201).json({
@@ -209,14 +210,119 @@ exports.joinRoom = async (req, res) => {
   }
 };
 
-// @desc    Iniciar sala
+// @desc    Toggle Ready Status (Novo)
+// @route   PUT /api/rooms/:id/toggle-ready
+// @access  Private
+exports.toggleReady = async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const userId = req.user.id;
+
+    console.log("🎮 Toggle ready:", { roomId, userId });
+
+    // Buscar sala
+    const room = await Room.findById(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Sala não encontrada",
+      });
+    }
+
+    // Verificar se a sala está aguardando
+    if (room.status !== "waiting") {
+      return res.status(400).json({
+        success: false,
+        message: "A sala não está mais aguardando jogadores",
+      });
+    }
+
+    // Buscar jogador
+    const player = await Player.findOne({
+      user: userId,
+      room: roomId,
+    });
+
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        message: "Você não está nesta sala",
+      });
+    }
+
+    // Toggle ready
+    player.isReady = !player.isReady;
+    await player.save();
+
+    console.log(
+      `✅ Player ${player.name} agora está: ${
+        player.isReady ? "PRONTO" : "NÃO PRONTO"
+      }`
+    );
+
+    // Buscar todos os jogadores da sala
+    const allPlayers = await Player.find({ room: roomId });
+    const totalPlayers = allPlayers.length;
+    const readyPlayers = allPlayers.filter((p) => p.isReady).length;
+
+    console.log(`📊 Status: ${readyPlayers}/${totalPlayers} jogadores prontos`);
+
+    // Verificar se todos estão prontos e se atingiu o mínimo
+    const allReady =
+      totalPlayers >= room.minPlayers && readyPlayers === totalPlayers;
+
+    if (allReady) {
+      console.log("🚀 TODOS OS JOGADORES PRONTOS! Iniciando sala...");
+
+      // Iniciar sala automaticamente
+      room.status = "active";
+      room.currentRound = 1;
+      room.startedAt = Date.now();
+      await room.save();
+
+      console.log("✅ Sala iniciada automaticamente!");
+    }
+
+    // Buscar sala atualizada
+    const updatedRoom = await Room.findById(roomId)
+      .populate("createdBy", "name email")
+      .populate({
+        path: "players",
+        select: "name isEliminated isReady user",
+      });
+
+    res.status(200).json({
+      success: true,
+      message: player.isReady
+        ? "Você está pronto!"
+        : "Você não está mais pronto",
+      data: {
+        player,
+        room: updatedRoom,
+        readyCount: readyPlayers,
+        totalCount: totalPlayers,
+        allReady,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Erro ao alternar status ready:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao alternar status",
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Iniciar sala (Deprecated - mantido para compatibilidade)
 // @route   PUT /api/rooms/:id/start
 // @access  Private (Apenas criador)
 exports.startRoom = async (req, res) => {
   try {
     const room = await Room.findById(req.params.id).populate(
       "players",
-      "name isEliminated"
+      "name isEliminated isReady"
     );
 
     if (!room) {
@@ -260,7 +366,7 @@ exports.startRoom = async (req, res) => {
       .populate("createdBy", "name email")
       .populate({
         path: "players",
-        select: "name isEliminated user",
+        select: "name isEliminated isReady user",
       });
 
     res.status(200).json({

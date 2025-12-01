@@ -16,6 +16,10 @@ const PlayerSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  isReady: {
+    type: Boolean,
+    default: false,
+  },
   isEliminated: {
     type: Boolean,
     default: false,

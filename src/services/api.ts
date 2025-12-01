@@ -139,7 +139,13 @@ export const roomAPI = {
     return response.data;
   },
 
-  // Iniciar sala (apenas admin)
+  // 🆕 Toggle Ready Status - Novo método
+  toggleReady: async (roomId: string) => {
+    const response = await api.put(`/rooms/${roomId}/toggle-ready`);
+    return response.data;
+  },
+
+  // Iniciar sala (apenas admin) - Deprecated, mantido para compatibilidade
   start: async (roomId: string) => {
     const response = await api.put(`/rooms/${roomId}/start`);
     return response.data;
