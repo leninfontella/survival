@@ -672,3 +672,69 @@ exports.getUsedTeams = async (req, res) => {
     });
   }
 };
+
+// @desc    Excluir sala
+// @route   DELETE /api/rooms/:id
+// @access  Private (Apenas criador)
+exports.deleteRoom = async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const userId = req.user.id;
+
+    console.log("🗑️ Tentando excluir sala:", roomId);
+    console.log("👤 Usuário:", userId);
+
+    // Buscar sala
+    const room = await Room.findById(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Sala não encontrada",
+      });
+    }
+
+    // Verificar se é o criador
+    const creatorId = room.createdBy._id || room.createdBy.id || room.createdBy;
+    const isCreator = creatorId.toString() === userId;
+
+    console.log("👑 É criador?", isCreator);
+    console.log("📊 Criador:", creatorId.toString());
+    console.log("📊 User:", userId);
+
+    if (!isCreator) {
+      return res.status(403).json({
+        success: false,
+        message: "Apenas o criador pode excluir a sala",
+      });
+    }
+
+    // Verificar se a sala pode ser excluída
+    if (room.status === "active") {
+      return res.status(400).json({
+        success: false,
+        message: "Não é possível excluir uma sala em andamento",
+      });
+    }
+
+    // Excluir todos os jogadores da sala
+    await Player.deleteMany({ room: roomId });
+    console.log("✅ Jogadores removidos");
+
+    // Excluir a sala
+    await Room.findByIdAndDelete(roomId);
+    console.log("✅ Sala excluída:", room.name);
+
+    res.status(200).json({
+      success: true,
+      message: "Sala excluída com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao excluir sala:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao excluir sala",
+      error: error.message,
+    });
+  }
+};

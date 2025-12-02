@@ -16,10 +16,21 @@ import {
   Loader2,
   Crown,
   Lock,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
-import { roomAPI } from "@/services/api";
+import { roomAPI, authAPI } from "@/services/api";
 
 const leagueNames = {
   brasil: "🇧🇷 Brasileirão",
@@ -65,6 +76,15 @@ export default function Dashboard() {
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Buscar userId ao carregar
+  useEffect(() => {
+    const userId = authAPI.getCurrentUserId();
+    setCurrentUserId(userId);
+  }, []);
 
   // Buscar salas ao carregar
   useEffect(() => {
@@ -92,6 +112,43 @@ export default function Dashboard() {
   const openRooms = rooms.filter((r) => r.status === "waiting");
   const activeRooms = rooms.filter((r) => r.status === "active");
   const finishedRooms = rooms.filter((r) => r.status === "finished");
+
+  const handleDeleteRoom = async () => {
+    if (!roomToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await roomAPI.delete(roomToDelete);
+
+      if (response.success) {
+        toast({
+          title: "Sala excluída!",
+          description: "A sala foi removida com sucesso.",
+        });
+
+        // Atualizar lista de salas
+        setRooms(rooms.filter((r) => r._id !== roomToDelete));
+        setRoomToDelete(null);
+      }
+    } catch (error: any) {
+      console.error("Erro ao excluir sala:", error);
+      toast({
+        title: "Erro ao excluir sala",
+        description:
+          error.response?.data?.message || "Não foi possível excluir a sala.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const isRoomCreator = (room: Room) => {
+    if (!currentUserId) return false;
+    const creatorId =
+      typeof room.createdBy === "string" ? room.createdBy : room.createdBy._id;
+    return creatorId === currentUserId;
+  };
 
   const RoomCard = ({ room }: { room: Room }) => {
     const statusConfig = {
@@ -259,6 +316,22 @@ export default function Dashboard() {
               ? "Ver Sala Ativa"
               : "Ver Resultados"}
           </Button>
+
+          {/* Botão de Excluir (apenas para criador) */}
+          {isRoomCreator(room) && room.status !== "active" && (
+            <Button
+              className="w-full mt-2"
+              variant="destructive"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRoomToDelete(room._id);
+              }}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir Sala
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
@@ -394,6 +467,44 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Alert Dialog para confirmar exclusão */}
+      <AlertDialog
+        open={!!roomToDelete}
+        onOpenChange={() => setRoomToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Sala?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A sala e todos os dados dos
+              jogadores serão permanentemente removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRoom}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

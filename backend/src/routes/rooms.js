@@ -9,6 +9,7 @@ const {
   toggleReady,
   selectTeam,
   getUsedTeams,
+  deleteRoom,
 } = require("../controllers/roomController");
 const { protect, optionalAuth } = require("../middleware/auth");
 
@@ -23,5 +24,6 @@ router.put("/:id/toggle-ready", protect, toggleReady);
 router.put("/:id/start", protect, startRoom);
 router.post("/:id/select-team", protect, selectTeam);
 router.get("/:id/used-teams", protect, getUsedTeams);
+router.delete("/:id", protect, deleteRoom);
 
 module.exports = router;

@@ -183,6 +183,12 @@ export const roomAPI = {
     const response = await api.put(`/rooms/${roomId}/finish`);
     return response.data;
   },
+
+  // Excluir sala
+  delete: async (roomId: string) => {
+    const response = await api.delete(`/rooms/${roomId}`);
+    return response.data;
+  },
 };
 
 // ============= PLAYER ENDPOINTS =============
