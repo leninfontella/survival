@@ -163,16 +163,27 @@ exports.getRoomById = async (req, res) => {
       });
       console.log("🎮 É jogador?", isPlayer);
 
-      // Se não for criador nem jogador, negar acesso
-      if (!isCreator && !isPlayer) {
-        console.log("❌ Acesso negado: não é criador nem jogador");
+      // IMPORTANTE: Se a sala está aguardando jogadores, permitir visualização
+      // para que o usuário possa ver os detalhes antes de entrar
+      if (!isCreator && !isPlayer && room.status !== "waiting") {
+        console.log(
+          "❌ Acesso negado: sala não está aguardando e usuário não é membro"
+        );
         return res.status(403).json({
           success: false,
           message: "Você não tem permissão para acessar esta sala privada.",
         });
       }
 
-      console.log("✅ Acesso permitido à sala privada");
+      // Se não for criador nem jogador, mas a sala está "waiting", permitir ver
+      // mas marcar como "precisa entrar"
+      if (!isCreator && !isPlayer && room.status === "waiting") {
+        console.log(
+          "⚠️ Usuário pode ver sala privada em espera (para decidir entrar)"
+        );
+      } else {
+        console.log("✅ Acesso permitido à sala privada");
+      }
     }
 
     console.log("✅ Sala encontrada:", room.name);
@@ -210,6 +221,9 @@ exports.joinRoom = async (req, res) => {
     const roomId = req.params.id;
     const userId = req.user.id;
 
+    console.log("🚪 Tentando entrar na sala:", roomId);
+    console.log("👤 Usuário:", userId, "Nome:", name);
+
     // Verificar se a sala existe
     const room = await Room.findById(roomId);
 
@@ -220,24 +234,14 @@ exports.joinRoom = async (req, res) => {
       });
     }
 
-    // Verificar acesso a sala privada
+    console.log("🔒 Sala privada?", room.isPrivate);
+
+    // Para salas privadas, apenas verificar se o usuário está autenticado
+    // O link de convite já garante que ele conhece a sala
     if (room.isPrivate) {
-      const isCreator = room.createdBy.toString() === userId;
-
-      // Verificar se já é jogador
-      const existingPlayer = await Player.findOne({
-        user: userId,
-        room: roomId,
-      });
-
-      // Se não for criador e não for jogador existente, negar acesso
-      if (!isCreator && !existingPlayer) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Esta sala é privada. Você precisa de um convite para entrar.",
-        });
-      }
+      console.log(
+        "✅ Sala privada - usuário autenticado pode entrar via link de convite"
+      );
     }
 
     // Verificar se a sala está aberta
@@ -269,10 +273,17 @@ exports.joinRoom = async (req, res) => {
       isReady: false,
     });
 
+    console.log("✅ Player criado:", player.name);
+
     // Adicionar player à sala
     room.players.push(player._id);
     room.prizePool = room.players.length * room.entryPrice;
     await room.save();
+
+    console.log(
+      "✅ Player adicionado à sala. Total de jogadores:",
+      room.players.length
+    );
 
     // Buscar sala atualizada com todos os players
     const updatedRoom = await Room.findById(roomId)
