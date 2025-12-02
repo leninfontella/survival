@@ -118,6 +118,16 @@ export default function Dashboard() {
       setTimeout(() => setCopiedRoomId(null), 2000);
     };
 
+    const handleRoomClick = () => {
+      if (room.status === "waiting") {
+        navigate(`/join-room/${room._id}`);
+      } else if (room.status === "active") {
+        navigate(`/survival-room/${room._id}`);
+      } else {
+        navigate(`/survival-room/${room._id}`);
+      }
+    };
+
     return (
       <Card className="hover:border-primary/50 transition-all hover:scale-[1.02] cursor-pointer border-border/50 bg-card/50 backdrop-blur">
         <CardHeader className="pb-3">
@@ -182,6 +192,7 @@ export default function Dashboard() {
             </span>
           </div>
 
+          {/* Sala pública aguardando - mostrar link */}
           {room.status === "waiting" && !room.isPrivate && (
             <div className="mt-3 p-2 bg-muted/50 rounded-md border border-border/50">
               <div className="flex items-center justify-between gap-2">
@@ -207,32 +218,43 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Sala privada aguardando - aviso para admin */}
           {room.isPrivate && room.status === "waiting" && (
             <div className="mt-3 p-3 bg-amber-500/10 rounded-md border border-amber-500/30">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 <Lock className="w-4 h-4 text-amber-600" />
-                <p className="text-xs text-amber-700">
-                  Sala privada - Compartilhe o link apenas com convidados
+                <p className="text-xs font-semibold text-amber-700">
+                  Sala Privada
                 </p>
               </div>
+              <p className="text-xs text-amber-700">
+                Compartilhe o link apenas com jogadores convidados
+              </p>
             </div>
           )}
 
+          {/* Sala privada ativa/finalizada - aviso de convite necessário */}
+          {room.isPrivate &&
+            (room.status === "active" || room.status === "finished") && (
+              <div className="mt-3 p-3 bg-primary/10 rounded-md border border-primary/30">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-primary" />
+                  <p className="text-xs text-primary font-medium">
+                    Sala Privada - Convite necessário
+                  </p>
+                </div>
+              </div>
+            )}
+
           <Button
             className="w-full mt-2"
-            onClick={() => {
-              if (room.status === "waiting") {
-                navigate(`/join-room/${room._id}`);
-              } else if (room.status === "active") {
-                navigate(`/survival-room/${room._id}`);
-              } else {
-                navigate(`/survival-room/${room._id}`);
-              }
-            }}
+            onClick={handleRoomClick}
             variant={room.status === "waiting" ? "default" : "outline"}
           >
             {room.status === "waiting"
-              ? "Entrar na Sala"
+              ? room.isPrivate
+                ? "Entrar com Convite"
+                : "Entrar na Sala"
               : room.status === "active"
               ? "Ver Sala Ativa"
               : "Ver Resultados"}

@@ -109,6 +109,18 @@ export default function SurvivalRoom() {
       try {
         const response = await roomAPI.getById(roomId);
         if (response.success && isMountedRef.current) {
+          // Verificar se precisa de convite
+          if (response.needsInvite) {
+            toast({
+              title: "Sala Privada",
+              description:
+                response.message ||
+                "Esta sala é privada. Entre em contato com o criador.",
+              variant: "destructive",
+            });
+            navigate("/dashboard");
+            return;
+          }
           setRoomData(response.data);
         }
       } catch (error) {

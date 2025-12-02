@@ -107,6 +107,17 @@ export default function JoinRoom() {
         console.log("✅ Resposta da API:", response);
 
         if (response.success && response.data) {
+          // Verificar se precisa de convite (sala privada onde não é membro)
+          if (response.needsInvite) {
+            console.log("⚠️ Sala privada - precisa de convite");
+            setError(
+              response.message ||
+                "Esta sala é privada. Você precisa de um convite para participar."
+            );
+            setIsLoading(false);
+            return;
+          }
+
           const room = response.data as RoomData;
           const previousStatus = roomData?.status;
           setRoomData(room);
@@ -355,11 +366,22 @@ export default function JoinRoom() {
               <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
               <div>
                 <h3 className="font-semibold text-lg mb-2">
-                  Sala não encontrada
+                  {error?.includes("privada")
+                    ? "🔒 Sala Privada"
+                    : "Sala não encontrada"}
                 </h3>
                 <p className="text-muted-foreground text-sm">
                   {error || "A sala não existe ou foi removida."}
                 </p>
+                {error?.includes("privada") && (
+                  <div className="mt-4 p-3 bg-amber-500/10 rounded-md border border-amber-500/30">
+                    <p className="text-xs text-amber-700">
+                      💡 <strong>Dica:</strong> Se você tem um link de convite,
+                      verifique se está logado com a conta correta ou entre em
+                      contato com o criador da sala.
+                    </p>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground mt-2">
                   ID: {roomId}
                 </p>
