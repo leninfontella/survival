@@ -112,6 +112,7 @@ export const roomAPI = {
     minPlayers: number;
     entryPrice: number;
     totalRounds: number;
+    isPrivate?: boolean;
   }) => {
     const response = await api.post("/rooms", data);
     return response.data;

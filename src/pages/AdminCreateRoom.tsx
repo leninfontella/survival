@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Unlock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { League } from "@/types/game";
 import { roomAPI } from "@/services/api";
@@ -49,6 +50,7 @@ export default function AdminCreateRoom() {
     minPlayers: 10,
     entryPrice: 50,
     totalRounds: 38,
+    isPrivate: false,
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -70,6 +72,7 @@ export default function AdminCreateRoom() {
         minPlayers: formData.minPlayers,
         entryPrice: formData.entryPrice,
         totalRounds: formData.totalRounds,
+        isPrivate: formData.isPrivate,
       });
 
       if (response.success) {
@@ -77,7 +80,9 @@ export default function AdminCreateRoom() {
 
         toast({
           title: "Sala criada com sucesso!",
-          description: "Você será redirecionado para a sala de espera.",
+          description: formData.isPrivate
+            ? "Sala privada criada. Apenas convidados poderão entrar."
+            : "Sala pública criada. Todos podem ver e entrar.",
         });
 
         // Redireciona para JoinRoom como admin/criador
@@ -122,6 +127,40 @@ export default function AdminCreateRoom() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Privacy Toggle */}
+              <div className="p-4 rounded-lg border-2 border-border bg-muted/50">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5 flex-1">
+                    <div className="flex items-center gap-2">
+                      {formData.isPrivate ? (
+                        <Lock className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Unlock className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <Label
+                        htmlFor="privacy"
+                        className="text-base font-semibold cursor-pointer"
+                      >
+                        {formData.isPrivate ? "Sala Privada" : "Sala Pública"}
+                      </Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {formData.isPrivate
+                        ? "Apenas você e jogadores convidados poderão ver e entrar nesta sala"
+                        : "Qualquer pessoa pode ver e entrar nesta sala"}
+                    </p>
+                  </div>
+                  <Switch
+                    id="privacy"
+                    checked={formData.isPrivate}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isPrivate: checked })
+                    }
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="league">Liga / Campeonato</Label>
                 <Select
@@ -222,6 +261,23 @@ export default function AdminCreateRoom() {
                 <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                   <h4 className="font-semibold text-primary mb-2">Resumo</h4>
                   <div className="space-y-1 text-sm">
+                    <p className="flex items-center gap-2">
+                      {formData.isPrivate ? (
+                        <>
+                          <Lock className="h-3.5 w-3.5" />
+                          <span>
+                            Privacidade: <strong>Privada</strong>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock className="h-3.5 w-3.5" />
+                          <span>
+                            Privacidade: <strong>Pública</strong>
+                          </span>
+                        </>
+                      )}
+                    </p>
                     <p>
                       • Liga:{" "}
                       {
@@ -253,7 +309,14 @@ export default function AdminCreateRoom() {
                       Criando Sala...
                     </>
                   ) : (
-                    "Criar Sala e Entrar"
+                    <>
+                      {formData.isPrivate ? (
+                        <Lock className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Unlock className="mr-2 h-4 w-4" />
+                      )}
+                      Criar Sala e Entrar
+                    </>
                   )}
                 </Button>
               </div>

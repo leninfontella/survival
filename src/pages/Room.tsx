@@ -1,48 +1,114 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useGame } from "@/hooks/useGame";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Trophy, Play, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/hooks/use-toast";
+import { ArrowLeft, Loader2, Lock, Unlock } from "lucide-react";
 import { Link } from "react-router-dom";
+import { League } from "@/types/game";
+import { roomAPI } from "@/services/api";
+import { Navbar } from "@/components/Navbar";
 
-export default function Room() {
+const leagueOptions = [
+  { value: "brasil" as League, label: "🇧🇷 Brasileirão", rounds: 38 },
+  { value: "espanha" as League, label: "🇪🇸 La Liga (Espanha)", rounds: 38 },
+  {
+    value: "inglaterra" as League,
+    label: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League (Inglaterra)",
+    rounds: 38,
+  },
+  {
+    value: "alemanha" as League,
+    label: "🇩🇪 Bundesliga (Alemanha)",
+    rounds: 34,
+  },
+  { value: "italia" as League, label: "🇮🇹 Serie A (Itália)", rounds: 38 },
+  { value: "franca" as League, label: "🇫🇷 Ligue 1 (França)", rounds: 34 },
+];
+
+export default function AdminCreateRoom() {
   const navigate = useNavigate();
-  const { currentRoom, players, currentPlayer, startRoom } = useGame();
+  const [formData, setFormData] = useState({
+    name: "",
+    league: "brasil" as League,
+    minPlayers: 10,
+    entryPrice: 50,
+    totalRounds: 38,
+    isPrivate: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
-  if (!currentRoom) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground mb-4">Nenhuma sala ativa</p>
-            <Link to="/">
-              <Button>Voltar ao Início</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const roomPlayers = players.filter((p) => p.roomId === currentRoom.id);
-  const activePlayers = roomPlayers.filter((p) => !p.isEliminated);
-  const canStart =
-    roomPlayers.length >= currentRoom.minPlayers &&
-    currentRoom.status === "waiting";
-  const isAdmin = !currentPlayer; // Simplified: if no currentPlayer, assume admin view
-
-  const handleStart = () => {
-    startRoom();
+  const handleLeagueChange = (league: League) => {
+    setFormData({
+      ...formData,
+      league,
+    });
   };
 
-  const handleSelectTeam = () => {
-    navigate("/room/select-team");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const response = await roomAPI.create({
+        name: formData.name,
+        league: formData.league,
+        minPlayers: formData.minPlayers,
+        entryPrice: formData.entryPrice,
+        totalRounds: formData.totalRounds,
+        isPrivate: formData.isPrivate,
+      });
+
+      if (response.success) {
+        const roomId = response.data._id || response.data.id;
+
+        toast({
+          title: "Sala criada com sucesso!",
+          description: formData.isPrivate
+            ? "Sala privada criada. Apenas convidados poderão entrar."
+            : "Sala pública criada. Todos podem ver e entrar.",
+        });
+
+        // Redireciona para JoinRoom como admin/criador
+        navigate(`/join-room/${roomId}`);
+      }
+    } catch (error) {
+      console.error("Erro ao criar sala:", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Tente novamente mais tarde.";
+
+      toast({
+        title: "Erro ao criar sala",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
-      <div className="container mx-auto px-4 py-8">
+      <Navbar />
+
+      <div className="container mx-auto px-4 py-8 mt-20">
         <Link to="/dashboard">
           <Button variant="ghost" className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -50,224 +116,213 @@ export default function Room() {
           </Button>
         </Link>
 
-        <div className="max-w-6xl mx-auto space-y-6">
-          {/* Header */}
-          <Card className="border-border/50 bg-card/50 backdrop-blur">
-            <CardHeader>
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                    {currentRoom.name}
-                  </CardTitle>
-                  <div className="flex gap-2 mt-2">
-                    <Badge
-                      variant={
-                        currentRoom.status === "active"
-                          ? "default"
-                          : "secondary"
-                      }
-                    >
-                      {currentRoom.status === "waiting"
-                        ? "Aguardando"
-                        : currentRoom.status === "active"
-                        ? "Em Andamento"
-                        : "Finalizada"}
-                    </Badge>
-                    {currentRoom.status === "active" && (
-                      <Badge variant="outline">
-                        Rodada {currentRoom.currentRound}/
-                        {currentRoom.totalRounds}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">
-                    Prêmio Total
-                  </div>
-                  <div className="text-3xl font-bold text-primary">
-                    R$ {currentRoom.prizePool.toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Users className="h-8 w-8 text-primary" />
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {roomPlayers.length}
+        <Card className="max-w-2xl mx-auto border-border/50 bg-card/50 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+              Criar Nova Sala
+            </CardTitle>
+            <CardDescription className="text-center">
+              Configure os parâmetros da competição
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Privacy Toggle */}
+              <div className="p-4 rounded-lg border-2 border-border bg-muted/50">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5 flex-1">
+                    <div className="flex items-center gap-2">
+                      {formData.isPrivate ? (
+                        <Lock className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Unlock className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <Label
+                        htmlFor="privacy"
+                        className="text-base font-semibold cursor-pointer"
+                      >
+                        {formData.isPrivate ? "Sala Privada" : "Sala Pública"}
+                      </Label>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Jogadores Inscritos
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Trophy className="h-8 w-8 text-accent" />
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {activePlayers.length}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Sobreviventes
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Play className="h-8 w-8 text-glow" />
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {currentRoom.status === "active"
-                        ? currentRoom.currentRound
-                        : "-"}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Rodada Atual
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Actions */}
-          {currentRoom.status === "waiting" && isAdmin && (
-            <Card className="border-primary/50 bg-primary/5">
-              <CardContent className="pt-6">
-                <div className="text-center space-y-4">
-                  <p className="text-muted-foreground">
-                    {roomPlayers.length < currentRoom.minPlayers
-                      ? `Aguardando mais ${
-                          currentRoom.minPlayers - roomPlayers.length
-                        } jogador(es) para iniciar`
-                      : "Número mínimo de jogadores atingido!"}
-                  </p>
-                  <Button
-                    size="lg"
-                    disabled={!canStart}
-                    onClick={handleStart}
-                    className="w-full md:w-auto"
-                  >
-                    <Play className="mr-2 h-5 w-5" />
-                    Iniciar Competição
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {currentRoom.status === "waiting" && !isAdmin && (
-            <Card className="border-accent/50 bg-accent/5">
-              <CardContent className="pt-6">
-                <div className="text-center space-y-4">
-                  <p className="text-muted-foreground">
-                    {roomPlayers.length < currentRoom.minPlayers
-                      ? `Aguardando mais ${
-                          currentRoom.minPlayers - roomPlayers.length
-                        } jogador(es) para iniciar`
-                      : "Número mínimo de jogadores atingido! Prepare-se!"}
-                  </p>
-                  <Button
-                    size="lg"
-                    disabled={!canStart}
-                    onClick={handleSelectTeam}
-                    className="w-full md:w-auto"
-                  >
-                    <Trophy className="mr-2 h-5 w-5" />
-                    INICIAR SOBREVIVÊNCIA
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {currentRoom.status === "active" &&
-            currentPlayer &&
-            !currentPlayer.isEliminated && (
-              <Card className="border-accent/50 bg-accent/5">
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4">
-                    <p className="text-lg font-semibold">
-                      Rodada {currentRoom.currentRound} - Escolha seu time!
+                    <p className="text-sm text-muted-foreground">
+                      {formData.isPrivate
+                        ? "Apenas você e jogadores convidados poderão ver e entrar nesta sala"
+                        : "Qualquer pessoa pode ver e entrar nesta sala"}
                     </p>
-                    <Button
-                      size="lg"
-                      onClick={handleSelectTeam}
-                      className="w-full md:w-auto"
-                    >
-                      Selecionar Time
-                      <ChevronRight className="ml-2 h-5 w-5" />
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-          {/* Players List */}
-          <Card className="border-border/50 bg-card/50 backdrop-blur">
-            <CardHeader>
-              <CardTitle>Jogadores</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {roomPlayers.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Nenhum jogador inscrito ainda
-                  </p>
-                ) : (
-                  roomPlayers.map((player) => (
-                    <div
-                      key={player.id}
-                      className="flex justify-between items-center p-3 rounded-lg bg-background/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            player.isEliminated
-                              ? "bg-destructive"
-                              : "bg-primary"
-                          }`}
-                        />
-                        <span
-                          className={
-                            player.isEliminated
-                              ? "line-through text-muted-foreground"
-                              : ""
-                          }
-                        >
-                          {player.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {player.isEliminated ? (
-                          <Badge variant="destructive">Eliminado</Badge>
-                        ) : (
-                          <Badge variant="default">Ativo</Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
+                  <Switch
+                    id="privacy"
+                    checked={formData.isPrivate}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isPrivate: checked })
+                    }
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="league">Liga / Campeonato</Label>
+                <Select
+                  value={formData.league}
+                  onValueChange={handleLeagueChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a liga" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leagueOptions.map((league) => (
+                      <SelectItem key={league.value} value={league.value}>
+                        {league.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome da Sala</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="Ex: Survivor Premier League 2024"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minPlayers">Jogadores Mínimos</Label>
+                  <Input
+                    id="minPlayers"
+                    type="number"
+                    min="2"
+                    value={formData.minPlayers}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        minPlayers: parseInt(e.target.value),
+                      })
+                    }
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="entryPrice">Valor de Entrada (R$)</Label>
+                  <Input
+                    id="entryPrice"
+                    type="number"
+                    min="1"
+                    value={formData.entryPrice}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        entryPrice: parseFloat(e.target.value),
+                      })
+                    }
+                    required
+                    disabled={isLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Cada jogador paga este valor para participar
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="totalRounds">Total de Rodadas</Label>
+                <Input
+                  id="totalRounds"
+                  type="number"
+                  min="1"
+                  value={formData.totalRounds}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      totalRounds: parseInt(e.target.value),
+                    })
+                  }
+                  required
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Defina o número de rodadas da competição
+                </p>
+              </div>
+
+              <div className="pt-4 space-y-4">
+                <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                  <h4 className="font-semibold text-primary mb-2">Resumo</h4>
+                  <div className="space-y-1 text-sm">
+                    <p className="flex items-center gap-2">
+                      {formData.isPrivate ? (
+                        <>
+                          <Lock className="h-3.5 w-3.5" />
+                          <span>
+                            Privacidade: <strong>Privada</strong>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock className="h-3.5 w-3.5" />
+                          <span>
+                            Privacidade: <strong>Pública</strong>
+                          </span>
+                        </>
+                      )}
+                    </p>
+                    <p>
+                      • Liga:{" "}
+                      {
+                        leagueOptions.find((l) => l.value === formData.league)
+                          ?.label
+                      }
+                    </p>
+                    <p>• Entrada: R$ {formData.entryPrice}</p>
+                    <p>• Mínimo: {formData.minPlayers} jogadores</p>
+                    <p>• Duração: {formData.totalRounds} rodadas</p>
+                    <p>
+                      • Prêmio inicial: R${" "}
+                      {(
+                        formData.minPlayers * formData.entryPrice
+                      ).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Criando Sala...
+                    </>
+                  ) : (
+                    <>
+                      {formData.isPrivate ? (
+                        <Lock className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Unlock className="mr-2 h-4 w-4" />
+                      )}
+                      Criar Sala e Entrar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

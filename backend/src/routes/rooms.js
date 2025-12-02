@@ -10,17 +10,17 @@ const {
   selectTeam,
   getUsedTeams,
 } = require("../controllers/roomController");
-const { protect } = require("../middleware/auth");
+const { protect, optionalAuth } = require("../middleware/auth");
 
-// Rotas públicas
-router.get("/", getRooms);
-router.get("/:id", getRoomById);
+// Rotas com autenticação opcional (para verificar privacidade)
+router.get("/", optionalAuth, getRooms);
+router.get("/:id", optionalAuth, getRoomById);
 
-// Rotas protegidas
+// Rotas protegidas (requerem autenticação)
 router.post("/", protect, createRoom);
 router.post("/:id/join", protect, joinRoom);
 router.put("/:id/toggle-ready", protect, toggleReady);
-router.put("/:id/start", protect, startRoom); // Deprecated, mantido para compatibilidade
+router.put("/:id/start", protect, startRoom);
 router.post("/:id/select-team", protect, selectTeam);
 router.get("/:id/used-teams", protect, getUsedTeams);
 

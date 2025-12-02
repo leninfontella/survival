@@ -15,6 +15,7 @@ import {
   UserCircle,
   Loader2,
   Crown,
+  Lock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
@@ -45,6 +46,7 @@ interface Room {
   minPlayers: number;
   entryPrice: number;
   prizePool: number;
+  isPrivate: boolean;
   createdBy: User | string;
   players: Array<{
     _id: string;
@@ -119,9 +121,20 @@ export default function Dashboard() {
     return (
       <Card className="hover:border-primary/50 transition-all hover:scale-[1.02] cursor-pointer border-border/50 bg-card/50 backdrop-blur">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-3">
             <div className="space-y-1 flex-1">
-              <CardTitle className="text-xl">{room.name}</CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <CardTitle className="text-xl">{room.name}</CardTitle>
+                {room.isPrivate && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-amber-500/20 text-amber-700 border-amber-500/30"
+                  >
+                    <Lock className="w-3 h-3 mr-1" />
+                    Privada
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {leagueNames[room.league]}
               </p>
@@ -136,7 +149,7 @@ export default function Dashboard() {
                 </span>
               </div>
             </div>
-            <Badge className={`${config.color} text-white border-0`}>
+            <Badge className={`${config.color} text-white border-0 shrink-0`}>
               <Icon className="w-3 h-3 mr-1" />
               {config.label}
             </Badge>
@@ -169,7 +182,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          {room.status === "waiting" && (
+          {room.status === "waiting" && !room.isPrivate && (
             <div className="mt-3 p-2 bg-muted/50 rounded-md border border-border/50">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
@@ -194,6 +207,17 @@ export default function Dashboard() {
             </div>
           )}
 
+          {room.isPrivate && room.status === "waiting" && (
+            <div className="mt-3 p-3 bg-amber-500/10 rounded-md border border-amber-500/30">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-600" />
+                <p className="text-xs text-amber-700">
+                  Sala privada - Compartilhe o link apenas com convidados
+                </p>
+              </div>
+            </div>
+          )}
+
           <Button
             className="w-full mt-2"
             onClick={() => {
@@ -202,7 +226,6 @@ export default function Dashboard() {
               } else if (room.status === "active") {
                 navigate(`/survival-room/${room._id}`);
               } else {
-                // Finalizada - pode ir para uma página de resultados
                 navigate(`/survival-room/${room._id}`);
               }
             }}

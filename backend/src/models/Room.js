@@ -11,6 +11,10 @@ const RoomSchema = new mongoose.Schema({
     required: true,
     enum: ["brasil", "espanha", "inglaterra", "alemanha", "italia", "franca"],
   },
+  isPrivate: {
+    type: Boolean,
+    default: false,
+  },
   status: {
     type: String,
     enum: ["waiting", "active", "finished"],
