@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,65 +9,27 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { TeamTransition } from "@/components/TeamTransition";
 import { roomAPI, authAPI } from "@/services/api";
+import { useGame } from "@/hooks/useGame";
 
-// Mock de times - você deve substituir isso pela chamada da API real
-const mockTeamsByLeague = {
-  espanha: [
-    {
-      id: "1",
-      name: "Real Madrid",
-      logo: "https://via.placeholder.com/56x56?text=RM",
-      league: "espanha" as const,
-    },
-    {
-      id: "2",
-      name: "Barcelona",
-      logo: "https://via.placeholder.com/56x56?text=BAR",
-      league: "espanha" as const,
-    },
-    {
-      id: "3",
-      name: "Atlético Madrid",
-      logo: "https://via.placeholder.com/56x56?text=ATM",
-      league: "espanha" as const,
-    },
-    // ... adicione mais times
-  ],
-  brasil: [
-    {
-      id: "10",
-      name: "Flamengo",
-      logo: "https://via.placeholder.com/56x56?text=FLA",
-      league: "brasil" as const,
-    },
-    {
-      id: "11",
-      name: "Palmeiras",
-      logo: "https://via.placeholder.com/56x56?text=PAL",
-      league: "brasil" as const,
-    },
-    // ... adicione mais times
-  ],
-  // ... outras ligas
-};
+type League =
+  | "brasil"
+  | "espanha"
+  | "inglaterra"
+  | "alemanha"
+  | "italia"
+  | "franca";
 
 interface Team {
   id: string;
   name: string;
   logo: string;
-  league:
-    | "brasil"
-    | "espanha"
-    | "inglaterra"
-    | "alemanha"
-    | "italia"
-    | "franca";
+  league: League;
 }
 
 interface RoomData {
   _id: string;
   name: string;
-  league: string;
+  league: League;
   status: string;
   currentRound: number;
   totalRounds: number;
@@ -77,6 +39,7 @@ interface RoomData {
 export default function SelectTeam() {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
+  const { teams, getTeamsByLeague } = useGame();
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -87,9 +50,10 @@ export default function SelectTeam() {
   // Debug: Verificar roomId
   useEffect(() => {
     console.log("🔍 SelectTeam carregado");
-    console.log("📍 RoomId da URL:", roomId);
-    console.log("📍 URL completa:", window.location.href);
-  }, [roomId]);
+    console.log("🔍 RoomId da URL:", roomId);
+    console.log("🔍 URL completa:", window.location.href);
+    console.log("🎯 Total de times disponíveis:", teams.length);
+  }, [roomId, teams]);
 
   // Buscar dados da sala
   useEffect(() => {
@@ -116,6 +80,7 @@ export default function SelectTeam() {
 
         if (roomResponse.success) {
           setRoomData(roomResponse.data);
+          console.log("✅ Liga da sala:", roomResponse.data.league);
         }
 
         // Buscar times já usados
@@ -197,10 +162,21 @@ export default function SelectTeam() {
 
   const isTeamUsed = (teamId: string) => usedTeams.includes(teamId);
 
-  // Pegar times disponíveis baseado na liga da sala
-  const availableTeams: Team[] = roomData
-    ? mockTeamsByLeague[roomData.league as keyof typeof mockTeamsByLeague] || []
-    : [];
+  // 🎯 CORREÇÃO: Usar times do contexto baseado na liga da sala com useMemo
+  const availableTeams: Team[] = useMemo(() => {
+    return roomData ? getTeamsByLeague(roomData.league) : [];
+  }, [roomData, getTeamsByLeague]);
+
+  useEffect(() => {
+    if (roomData) {
+      console.log(
+        "🎯 Times disponíveis para a liga",
+        roomData.league,
+        ":",
+        availableTeams.length
+      );
+    }
+  }, [roomData, availableTeams]);
 
   const selectedTeam = selectedTeamId
     ? availableTeams.find((t) => t.id === selectedTeamId)
@@ -225,6 +201,23 @@ export default function SelectTeam() {
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground mb-4">Sala não encontrada</p>
+            <Link to="/dashboard">
+              <Button>Voltar ao Dashboard</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (availableTeams.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <p className="text-muted-foreground mb-4">
+              Nenhum time disponível para a liga: {roomData.league}
+            </p>
             <Link to="/dashboard">
               <Button>Voltar ao Dashboard</Button>
             </Link>
@@ -262,7 +255,7 @@ export default function SelectTeam() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Link to={`/join-room/${roomId}`}>
+            <Link to={`/survival-room/${roomId}`}>
               <Button variant="ghost" className="mb-6 hover:bg-primary/10">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar
@@ -291,8 +284,9 @@ export default function SelectTeam() {
                     <span className="text-primary font-bold">VENCER</span> nesta
                     rodada
                   </p>
-                  <div className="flex items-center justify-center gap-4 text-sm">
+                  <div className="flex items-center justify-center gap-4 text-sm flex-wrap">
                     <Badge variant="outline">Sala: {roomData.name}</Badge>
+                    <Badge variant="outline">Liga: {roomData.league}</Badge>
                     <Badge variant="outline">
                       Prêmio: R$ {roomData.prizePool.toFixed(2)}
                     </Badge>
@@ -311,11 +305,13 @@ export default function SelectTeam() {
                 <CardHeader className="border-b border-border/50">
                   <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-xl">Times Disponíveis</CardTitle>
+                    <CardTitle className="text-xl">
+                      Times Disponíveis ({availableTeams.length})
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {availableTeams.map((team, index) => {
                       const used = isTeamUsed(team.id);
                       const selected = selectedTeamId === team.id;
@@ -325,7 +321,7 @@ export default function SelectTeam() {
                           key={team.id}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          transition={{ duration: 0.3, delay: index * 0.02 }}
                           whileHover={!used ? { scale: 1.05, y: -5 } : {}}
                           whileTap={!used ? { scale: 0.98 } : {}}
                           onClick={() => !used && setSelectedTeamId(team.id)}
@@ -494,23 +490,19 @@ export default function SelectTeam() {
             </motion.div>
 
             {/* Used Teams Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-xl">
-                <CardHeader className="border-b border-border/50">
-                  <CardTitle className="text-xl">
-                    Seus Times Já Usados
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  {usedTeams.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      Nenhum time usado ainda
-                    </p>
-                  ) : (
+            {usedTeams.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-xl">
+                  <CardHeader className="border-b border-border/50">
+                    <CardTitle className="text-xl">
+                      Seus Times Já Usados ({usedTeams.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
                     <div className="flex flex-wrap gap-3">
                       {usedTeams.map((teamId, index) => {
                         const team = availableTeams.find(
@@ -543,10 +535,10 @@ export default function SelectTeam() {
                         ) : null;
                       })}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
