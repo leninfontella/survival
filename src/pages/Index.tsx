@@ -55,14 +55,14 @@ const Index = () => {
         <div className="container mx-auto px-4 z-10 text-center">
           <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
             <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-              Sobreviva às{" "}
+              Sobreviva a{" "}
               <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-pulse">
-                38 Rodadas
+                cada rodada!
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-              Escolha o time vencedor a cada rodada do Brasileirão. Um erro e
-              você está fora. O último sobrevivente leva tudo!
+              Escolha o time vencedor a cada rodada das maiores ligas do MUNDO.
+              Um erro e você está fora. O último sobrevivente leva tudo!
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
@@ -129,7 +129,7 @@ const Index = () => {
                 step: "01",
                 title: "Compre sua Linha",
                 description:
-                  "Adquira uma ou mais linhas (entradas) para participar do campeonato",
+                  "Adquira uma linhas (por liga) para participar das rodadas",
               },
               {
                 icon: <Shield className="w-10 h-10" />,
@@ -150,7 +150,7 @@ const Index = () => {
                 step: "04",
                 title: "Ganhe o Prêmio",
                 description:
-                  "O último jogador sobrevivente leva todo o prêmio acumulado",
+                  "O último jogador sobrevivente leva todo o prêmio acumulado!",
               },
             ].map((item, index) => (
               <div key={index} className="relative">
@@ -189,12 +189,12 @@ const Index = () => {
               {
                 title: "Compra de Linha",
                 description:
-                  "Cada jogador pode comprar uma ou mais linhas (entradas) para participar. Quanto mais linhas, mais chances de sobreviver!",
+                  "Cada jogador pode comprar uma ou mais linhas (entradas) para participar. Quanto mais ligas e salas criadas, mais chances de ganhar!",
               },
               {
                 title: "Escolha por Rodada",
                 description:
-                  "A cada rodada do Brasileirão, você escolhe UM time que acredita que vai VENCER sua partida.",
+                  "A cada rodada das ligas, você escolhe UM time que acredita que vai VENCER sua partida.",
               },
               {
                 title: "Condição de Vitória",
@@ -204,12 +204,12 @@ const Index = () => {
               {
                 title: "Condição de Eliminação",
                 description:
-                  "Se o time escolhido EMPATAR ou PERDER, você é ELIMINADO e perde a linha. Sem chances extras!",
+                  "Se o time escolhido EMPATAR ou PERDER, você é ELIMINADO e perde a rodada. Sem chances extras!",
               },
               {
                 title: "Restrição Importante",
                 description:
-                  "Você NÃO PODE escolher o mesmo time duas vezes durante todo o campeonato. Escolha com sabedoria!",
+                  "Você NÃO PODE escolher o mesmo time duas vezes durante as rodadas. Escolha com sabedoria!",
               },
               {
                 title: "Prêmio Final",
@@ -252,8 +252,8 @@ const Index = () => {
               R$ 150.000
             </div>
             <p className="text-xl text-muted-foreground">
-              O prêmio aumenta a cada nova linha comprada. Entre agora e aumente
-              suas chances!
+              O prêmio aumenta a cada novo jogador na sala! Entre agora e
+              aumente suas chances!
             </p>
             <Button
               variant="hero"
@@ -277,7 +277,7 @@ const Index = () => {
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 Cadastre-se agora e comece sua jornada rumo ao prêmio máximo.
-                Teste sua sorte e conhecimento do futebol brasileiro!
+                Teste sua sorte e conhecimento do futebol mundial!
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Link to="/cadastro">
@@ -302,7 +302,7 @@ const Index = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
               <Trophy className="w-6 h-6 text-primary" />
-              <span className="text-xl font-bold">Brasileirão Survivor</span>
+              <span className="text-xl font-bold">Sobrevivente</span>
             </div>
             <div className="flex gap-8 text-sm text-muted-foreground">
               <a href="#" className="hover:text-primary transition-colors">
@@ -316,7 +316,7 @@ const Index = () => {
               </a>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 Brasileirão Survivor. Todos os direitos reservados.
+              © 2026 Sobrevivente. Todos os direitos reservados.
             </p>
           </div>
         </div>
