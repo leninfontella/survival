@@ -26,7 +26,8 @@ const Login = () => {
         description: "Bem-vindo de volta ao Brasileirão Survivor",
       });
 
-      navigate("/dashboard");
+      // Redireciona para a página principal ao invés do dashboard
+      navigate("/");
     } catch (error: unknown) {
       console.error("Erro ao fazer login:", error);
 
