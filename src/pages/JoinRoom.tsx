@@ -24,9 +24,12 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
+  Trophy, // ← ADICIONE ESTA LINHA
+  Zap, // ← ADICIONE ESTA LINHA
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { roomAPI, authAPI } from "@/services/api";
+import { motion, AnimatePresence } from "framer-motion"; // ← ADICIONE ESTA LINHA
 
 // Tipos
 interface User {
@@ -88,6 +91,7 @@ export default function JoinRoom() {
   const [pixCode] = useState(
     "00020126580014BR.GOV.BCB.PIX0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Bolao Survivor6009SAO PAULO62070503***6304ABCD"
   );
+  const [showStartingModal, setShowStartingModal] = useState(false);
 
   // Buscar dados da sala
 
@@ -171,12 +175,7 @@ export default function JoinRoom() {
                 console.log(
                   "🚀 Sala ativa detectada! Redirecionando para sala de sobrevivência..."
                 );
-                toast({
-                  title: "🎉 Sala iniciada!",
-                  description:
-                    "Você será redirecionado para a sala de sobrevivência...",
-                  duration: 3000,
-                });
+                setShowStartingModal(true);
 
                 setTimeout(() => {
                   navigate(`/survival-room/${roomId}`);
@@ -321,12 +320,7 @@ export default function JoinRoom() {
         // Se todos estão prontos, a sala será iniciada automaticamente
         if (response.data.allReady) {
           console.log("🎉 TODOS PRONTOS! A sala será iniciada...");
-          toast({
-            title: "🎉 Todos prontos!",
-            description:
-              "Você será redirecionado para a sala de sobrevivência...",
-            duration: 3000,
-          });
+          setShowStartingModal(true);
 
           // Redirecionar após 2 segundos
           setTimeout(() => {
@@ -365,6 +359,288 @@ export default function JoinRoom() {
       description: "Compartilhe com outros jogadores.",
     });
   };
+
+  // Componente do Modal de Início
+  const StartingGameModal = () => (
+    <AnimatePresence>
+      {showStartingModal && (
+        <>
+          {/* Overlay com blur */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50"
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0, rotateX: -15 }}
+            animate={{ scale: 1, opacity: 1, rotateX: 0 }}
+            exit={{ scale: 0.8, opacity: 0, rotateX: 15 }}
+            transition={{
+              type: "spring",
+              duration: 0.6,
+              bounce: 0.3,
+            }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            style={{ perspective: "1000px" }}
+          >
+            <div className="relative max-w-lg w-full">
+              {/* Efeitos de luz de fundo */}
+              <motion.div
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.3, 0.6, 0.3],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 rounded-3xl blur-3xl"
+              />
+
+              {/* Card principal */}
+              <motion.div
+                className="relative bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-purple-500/30"
+                animate={{
+                  boxShadow: [
+                    "0 0 40px rgba(168, 85, 247, 0.4)",
+                    "0 0 80px rgba(236, 72, 153, 0.6)",
+                    "0 0 40px rgba(168, 85, 247, 0.4)",
+                  ],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                {/* Partículas flutuantes */}
+                <div className="absolute inset-0 overflow-hidden">
+                  {[...Array(20)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute w-1 h-1 bg-white rounded-full"
+                      initial={{
+                        x: Math.random() * 400,
+                        y: Math.random() * 600,
+                        opacity: 0,
+                      }}
+                      animate={{
+                        y: [null, -100],
+                        opacity: [0, 1, 0],
+                      }}
+                      transition={{
+                        duration: 2 + Math.random() * 2,
+                        repeat: Infinity,
+                        delay: Math.random() * 2,
+                        ease: "easeOut",
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Conteúdo */}
+                <div className="relative p-12 text-center space-y-8">
+                  {/* Ícone principal */}
+                  <motion.div
+                    className="relative mx-auto w-32 h-32 flex items-center justify-center"
+                    animate={{
+                      rotate: [0, 360],
+                    }}
+                    transition={{
+                      duration: 20,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  >
+                    {/* Círculos orbitais */}
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-2 border-purple-500/30"
+                      animate={{
+                        scale: [1, 1.2, 1],
+                        opacity: [0.3, 0.6, 0.3],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    />
+
+                    {/* Ícone central */}
+                    <motion.div
+                      className="relative bg-gradient-to-br from-purple-500 to-pink-500 p-6 rounded-full shadow-2xl"
+                      animate={{
+                        scale: [1, 1.05, 1],
+                      }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <Play className="w-16 h-16 text-white" />
+                    </motion.div>
+
+                    {/* Sparkles ao redor */}
+                    {[0, 60, 120, 180, 240, 300].map((angle, i) => (
+                      <motion.div
+                        key={angle}
+                        className="absolute"
+                        style={{
+                          left: "50%",
+                          top: "50%",
+                          transform: `rotate(${angle}deg) translateY(-80px)`,
+                        }}
+                        animate={{
+                          scale: [0, 1, 0],
+                          opacity: [0, 1, 0],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          delay: i * 0.2,
+                          ease: "easeOut",
+                        }}
+                      >
+                        <Zap className="w-6 h-6 text-yellow-400" />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+
+                  {/* Título */}
+                  <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="space-y-3"
+                  >
+                    <motion.h2
+                      className="text-5xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent"
+                      animate={{
+                        backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      style={{
+                        backgroundSize: "200% 200%",
+                      }}
+                    >
+                      🎉 SALA INICIADA! 🎉
+                    </motion.h2>
+
+                    <motion.p
+                      className="text-xl text-purple-200 font-semibold"
+                      animate={{
+                        opacity: [0.7, 1, 0.7],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      A competição está começando agora!
+                    </motion.p>
+                  </motion.div>
+
+                  {/* Mensagem */}
+                  <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="space-y-4"
+                  >
+                    <div className="flex items-center justify-center gap-3 text-white/80">
+                      <Zap className="w-5 h-5 text-yellow-400" />
+                      <p className="text-lg">
+                        Você será redirecionado para a sala de sobrevivência
+                      </p>
+                      <Zap className="w-5 h-5 text-yellow-400" />
+                    </div>
+
+                    {/* Contador animado */}
+                    <motion.div
+                      className="flex items-center justify-center gap-2"
+                      animate={{
+                        scale: [1, 1.1, 1],
+                      }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <motion.div
+                        className="w-2 h-2 bg-purple-400 rounded-full"
+                        animate={{
+                          opacity: [0.3, 1, 0.3],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                      />
+                      <motion.div
+                        className="w-2 h-2 bg-pink-400 rounded-full"
+                        animate={{
+                          opacity: [0.3, 1, 0.3],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          delay: 0.2,
+                          ease: "easeInOut",
+                        }}
+                      />
+                      <motion.div
+                        className="w-2 h-2 bg-yellow-400 rounded-full"
+                        animate={{
+                          opacity: [0.3, 1, 0.3],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          delay: 0.4,
+                          ease: "easeInOut",
+                        }}
+                      />
+                    </motion.div>
+                  </motion.div>
+
+                  {/* Badge de prêmio */}
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{
+                      delay: 0.7,
+                      type: "spring",
+                      stiffness: 200,
+                      damping: 10,
+                    }}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-full"
+                  >
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <span className="text-yellow-200 font-bold">
+                      Boa sorte, campeão!
+                    </span>
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                  </motion.div>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
 
   // Loading state
   if (isLoading) {
@@ -479,7 +755,6 @@ export default function JoinRoom() {
               </div>
             </CardHeader>
           </Card>
-
           {/* Informações da Sala */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="border-border/50 bg-card/50 backdrop-blur">
@@ -526,7 +801,6 @@ export default function JoinRoom() {
               </CardContent>
             </Card>
           </div>
-
           {/* Link de Compartilhamento */}
           {hasJoined && (
             <Card className="border-primary/50 bg-primary/5">
@@ -548,7 +822,6 @@ export default function JoinRoom() {
               </CardContent>
             </Card>
           )}
-
           {/* Formulário de Entrada ou Status */}
           {!hasJoined ? (
             // Jogador que ainda não entrou - mostrar formulário
@@ -753,7 +1026,6 @@ export default function JoinRoom() {
               </CardContent>
             </Card>
           ) : null}
-
           {/* Lista de Jogadores */}
           <Card className="border-border/50 bg-card/50 backdrop-blur">
             <CardHeader>
@@ -801,6 +1073,7 @@ export default function JoinRoom() {
               </div>
             </CardContent>
           </Card>
+          <StartingGameModal /> {/* ← ADICIONE ESTA LINHA */}
         </div>
       </div>
     </div>
