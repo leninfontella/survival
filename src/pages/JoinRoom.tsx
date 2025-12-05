@@ -26,6 +26,7 @@ import {
   XCircle,
   Trophy, // ← ADICIONE ESTA LINHA
   Zap, // ← ADICIONE ESTA LINHA
+  ArrowRight, // ← ADICIONE
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { roomAPI, authAPI } from "@/services/api";
@@ -164,26 +165,15 @@ export default function JoinRoom() {
             });
 
             // 🔥 REDIRECIONAMENTO AUTOMÁTICO QUANDO SALA FICA ATIVA
-            // Verifica se a sala está ativa E o status mudou de waiting para active
             if (room.status === "active") {
-              // Se previousStatus for undefined (primeira carga) E roomData também for null
-              // OU se previousStatus era "waiting"
               if (
                 (!previousStatus && !roomData) ||
                 previousStatus === "waiting"
               ) {
-                console.log(
-                  "🚀 Sala ativa detectada! Redirecionando para sala de sobrevivência..."
-                );
+                console.log("🚀 Sala ativa detectada! Mostrando modal...");
                 setShowStartingModal(true);
-
-                setTimeout(() => {
-                  navigate(`/survival-room/${roomId}`);
-                }, 2000);
-
-                // Importante: atualizar estado para evitar loops
                 setRoomData(room);
-                return; // Sair antes de atualizar novamente
+                return;
               }
             }
           }
@@ -321,11 +311,6 @@ export default function JoinRoom() {
         if (response.data.allReady) {
           console.log("🎉 TODOS PRONTOS! A sala será iniciada...");
           setShowStartingModal(true);
-
-          // Redirecionar após 2 segundos
-          setTimeout(() => {
-            navigate(`/survival-room/${roomId}`);
-          }, 2000);
         }
       }
     } catch (err) {
@@ -560,59 +545,11 @@ export default function JoinRoom() {
                     <div className="flex items-center justify-center gap-3 text-white/80">
                       <Zap className="w-5 h-5 text-yellow-400" />
                       <p className="text-lg">
-                        Você será redirecionado para a sala de sobrevivência
+                        Clique no botão abaixo para entrar na sala de
+                        sobrevivência
                       </p>
                       <Zap className="w-5 h-5 text-yellow-400" />
                     </div>
-
-                    {/* Contador animado */}
-                    <motion.div
-                      className="flex items-center justify-center gap-2"
-                      animate={{
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    >
-                      <motion.div
-                        className="w-2 h-2 bg-purple-400 rounded-full"
-                        animate={{
-                          opacity: [0.3, 1, 0.3],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                      />
-                      <motion.div
-                        className="w-2 h-2 bg-pink-400 rounded-full"
-                        animate={{
-                          opacity: [0.3, 1, 0.3],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          delay: 0.2,
-                          ease: "easeInOut",
-                        }}
-                      />
-                      <motion.div
-                        className="w-2 h-2 bg-yellow-400 rounded-full"
-                        animate={{
-                          opacity: [0.3, 1, 0.3],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          delay: 0.4,
-                          ease: "easeInOut",
-                        }}
-                      />
-                    </motion.div>
                   </motion.div>
 
                   {/* Badge de prêmio */}
@@ -632,6 +569,52 @@ export default function JoinRoom() {
                       Boa sorte, campeão!
                     </span>
                     <Trophy className="w-5 h-5 text-yellow-400" />
+                  </motion.div>
+
+                  {/* Botão de Ação */}
+                  <motion.div
+                    initial={{ y: 30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.9 }}
+                  >
+                    <motion.button
+                      onClick={() => navigate(`/survival-room/${roomId}`)}
+                      className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-white text-lg shadow-2xl overflow-hidden"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      animate={{
+                        boxShadow: [
+                          "0 0 20px rgba(168, 85, 247, 0.5)",
+                          "0 0 40px rgba(236, 72, 153, 0.7)",
+                          "0 0 20px rgba(168, 85, 247, 0.5)",
+                        ],
+                      }}
+                      transition={{
+                        boxShadow: {
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        },
+                      }}
+                    >
+                      {/* Efeito de brilho ao passar o mouse */}
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                        initial={{ x: "-100%" }}
+                        animate={{ x: "200%" }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                      />
+
+                      <span className="relative flex items-center gap-3">
+                        <Play className="w-6 h-6" />
+                        Ir para Sala de Sobrevivência
+                        <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </motion.button>
                   </motion.div>
                 </div>
               </motion.div>
