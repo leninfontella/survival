@@ -153,17 +153,20 @@ export default function JoinRoom() {
             });
 
             // 🔥 Se a sala foi iniciada, redirecionar para seleção de time
+            // 🔥 Se a sala foi iniciada, redirecionar todos para SurvivalRoom
             if (room.status === "active" && previousStatus === "waiting") {
               console.log(
-                "🚀 Sala iniciada! Redirecionando para seleção de time..."
+                "🚀 Sala iniciada! Redirecionando para sala de sobrevivência..."
               );
               toast({
-                title: "Sala iniciada!",
-                description: "Todos estão prontos. Escolha seu time!",
+                title: "🎉 Sala iniciada!",
+                description:
+                  "Você será redirecionado para a sala de sobrevivência...",
+                duration: 3000,
               });
               setTimeout(() => {
-                navigate(`/room/select-team/${roomId}`);
-              }, 1500);
+                navigate(`/survival-room/${roomId}`); // ← ALTERAR AQUI
+              }, 2000);
             }
           }
         } else {
@@ -298,8 +301,15 @@ export default function JoinRoom() {
           console.log("🎉 TODOS PRONTOS! A sala será iniciada...");
           toast({
             title: "🎉 Todos prontos!",
-            description: "A competição está começando!",
+            description:
+              "Você será redirecionado para a sala de sobrevivência...",
+            duration: 3000,
           });
+
+          // Redirecionar após 2 segundos
+          setTimeout(() => {
+            navigate(`/survival-room/${roomId}`);
+          }, 2000);
         }
       }
     } catch (err) {
