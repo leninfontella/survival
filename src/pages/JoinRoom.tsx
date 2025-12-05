@@ -24,9 +24,10 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Trophy, // ← ADICIONE ESTA LINHA
-  Zap, // ← ADICIONE ESTA LINHA
-  ArrowRight, // ← ADICIONE
+  Trophy,
+  Zap,
+  ArrowRight,
+  RefreshCw, // ← ADICIONE ESTA LINHA
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { roomAPI, authAPI } from "@/services/api";
@@ -93,6 +94,7 @@ export default function JoinRoom() {
     "00020126580014BR.GOV.BCB.PIX0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Bolao Survivor6009SAO PAULO62070503***6304ABCD"
   );
   const [showStartingModal, setShowStartingModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Buscar dados da sala
 
@@ -125,7 +127,7 @@ export default function JoinRoom() {
           }
 
           const room = response.data as RoomData;
-          const previousStatus = roomData?.status; // Captura status anterior ANTES de atualizar
+          const previousStatus = roomData?.status;
 
           console.log("📦 Dados da sala carregados:", room);
           console.log(
@@ -203,17 +205,67 @@ export default function JoinRoom() {
       }
     };
 
-    // Buscar sala inicialmente
+    // Buscar sala apenas uma vez ao montar o componente
     fetchRoom();
-
-    // Polling para atualizar a lista de jogadores a cada 3 segundos
-    const interval = setInterval(() => {
-      console.log("🔄 Atualizando dados da sala...");
-      fetchRoom();
-    }, 3000);
-
-    return () => clearInterval(interval);
   }, [roomId, navigate]);
+
+  const handleRefresh = async () => {
+    if (!roomId || isRefreshing) return;
+
+    setIsRefreshing(true);
+    console.log("🔄 Atualizando dados da sala manualmente...");
+
+    try {
+      const response = await roomAPI.getById(roomId);
+
+      if (response.success && response.data) {
+        const room = response.data as RoomData;
+        const previousStatus = roomData?.status;
+
+        // Verificar se o usuário já está na sala
+        const userId = authAPI.getCurrentUserId();
+
+        if (userId && room.players) {
+          const playerInRoom = room.players.find((p: Player) => {
+            if (typeof p.user === "string") {
+              return p.user === userId;
+            } else if (p.user) {
+              return p.user._id === userId || p.user.id === userId;
+            }
+            return false;
+          });
+
+          if (playerInRoom) {
+            setHasJoined(true);
+            setCurrentPlayer(playerInRoom);
+          }
+
+          // Verificar se sala ficou ativa
+          if (room.status === "active" && previousStatus === "waiting") {
+            console.log("🚀 Sala ativa detectada! Mostrando modal...");
+            setShowStartingModal(true);
+          }
+        }
+
+        setRoomData(room);
+
+        toast({
+          title: "Atualizado!",
+          description: "Dados da sala atualizados com sucesso.",
+        });
+      }
+    } catch (err) {
+      const error = err as APIError;
+      toast({
+        title: "Erro ao atualizar",
+        description:
+          error.response?.data?.message || "Não foi possível atualizar.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -708,10 +760,27 @@ export default function JoinRoom() {
           <Card className="border-primary/30 bg-card/50 backdrop-blur">
             <CardHeader>
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                    {roomData.name}
-                  </CardTitle>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                      {roomData.name}
+                    </CardTitle>
+                    {/* 🔄 BOTÃO DE REFRESH - ADICIONE AQUI */}
+                    <button
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      className="group relative w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Atualizar dados da sala"
+                    >
+                      <RefreshCw
+                        className={`w-5 h-5 text-primary transition-transform duration-500 ${
+                          isRefreshing
+                            ? "animate-spin"
+                            : "group-hover:rotate-180"
+                        }`}
+                      />
+                    </button>
+                  </div>
                   <div className="flex gap-2 mt-2">
                     <Badge variant="secondary">
                       <Clock className="w-3 h-3 mr-1" />
