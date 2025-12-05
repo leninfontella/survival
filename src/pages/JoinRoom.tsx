@@ -90,6 +90,7 @@ export default function JoinRoom() {
   );
 
   // Buscar dados da sala
+
   useEffect(() => {
     if (!roomId) {
       console.error("❌ RoomId não fornecido na URL");
@@ -119,9 +120,15 @@ export default function JoinRoom() {
           }
 
           const room = response.data as RoomData;
-          const previousStatus = roomData?.status;
-          setRoomData(room);
+          const previousStatus = roomData?.status; // Captura status anterior ANTES de atualizar
+
           console.log("📦 Dados da sala carregados:", room);
+          console.log(
+            "📊 Status anterior:",
+            previousStatus,
+            "| Status atual:",
+            room.status
+          );
 
           // Verificar se o usuário já está na sala
           const userId = authAPI.getCurrentUserId();
@@ -152,23 +159,38 @@ export default function JoinRoom() {
               players: room.players.length,
             });
 
-            // 🔥 Se a sala foi iniciada, redirecionar para seleção de time
-            // 🔥 Se a sala foi iniciada, redirecionar todos para SurvivalRoom
-            if (room.status === "active" && previousStatus === "waiting") {
-              console.log(
-                "🚀 Sala iniciada! Redirecionando para sala de sobrevivência..."
-              );
-              toast({
-                title: "🎉 Sala iniciada!",
-                description:
-                  "Você será redirecionado para a sala de sobrevivência...",
-                duration: 3000,
-              });
-              setTimeout(() => {
-                navigate(`/survival-room/${roomId}`); // ← ALTERAR AQUI
-              }, 2000);
+            // 🔥 REDIRECIONAMENTO AUTOMÁTICO QUANDO SALA FICA ATIVA
+            // Verifica se a sala está ativa E o status mudou de waiting para active
+            if (room.status === "active") {
+              // Se previousStatus for undefined (primeira carga) E roomData também for null
+              // OU se previousStatus era "waiting"
+              if (
+                (!previousStatus && !roomData) ||
+                previousStatus === "waiting"
+              ) {
+                console.log(
+                  "🚀 Sala ativa detectada! Redirecionando para sala de sobrevivência..."
+                );
+                toast({
+                  title: "🎉 Sala iniciada!",
+                  description:
+                    "Você será redirecionado para a sala de sobrevivência...",
+                  duration: 3000,
+                });
+
+                setTimeout(() => {
+                  navigate(`/survival-room/${roomId}`);
+                }, 2000);
+
+                // Importante: atualizar estado para evitar loops
+                setRoomData(room);
+                return; // Sair antes de atualizar novamente
+              }
             }
           }
+
+          // Atualizar estado da sala
+          setRoomData(room);
         } else {
           console.error("❌ Resposta inválida:", response);
           setError("Dados da sala inválidos");
@@ -202,7 +224,7 @@ export default function JoinRoom() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [roomId]);
+  }, [roomId, navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
