@@ -49,6 +49,13 @@ const Signup = () => {
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && currentStep < totalSteps && !isLoading) {
+      e.preventDefault();
+      handleNext();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -143,6 +150,7 @@ const Signup = () => {
                     placeholder="Digite seu nome completo"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="bg-background/50 border-primary/30 focus:border-primary"
                     autoFocus
                   />
@@ -170,6 +178,7 @@ const Signup = () => {
                     placeholder="seu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     className="bg-background/50 border-primary/30 focus:border-primary"
                     autoFocus
                   />
