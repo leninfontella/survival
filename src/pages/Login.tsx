@@ -24,7 +24,7 @@ const Login = () => {
 
   // Pegar informações do estado (de onde veio)
   const state = location.state as LocationState;
-  const redirectPath = state?.from || "/dashboard";
+  const redirectPath = state?.from || "/";
   const blockMessage = state?.message;
 
   // Se já estiver logado, redirecionar
@@ -162,7 +162,7 @@ const Login = () => {
             </p>
 
             {/* Mostrar rota de redirecionamento se não for dashboard */}
-            {redirectPath !== "/dashboard" && redirectPath !== "/" && (
+            {redirectPath !== "/" && redirectPath !== "/" && (
               <div className="pt-2 border-t border-border/50">
                 <p className="text-xs text-muted-foreground">
                   📍 Você será redirecionado para:
