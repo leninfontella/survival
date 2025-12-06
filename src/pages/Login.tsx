@@ -36,6 +36,7 @@ const Login = () => {
   }, [navigate, redirectPath]);
 
   // Mostrar mensagem de bloqueio se existir
+  // Mostrar mensagem de bloqueio se existir
   useEffect(() => {
     if (blockMessage) {
       toast({
@@ -45,6 +46,21 @@ const Login = () => {
       });
     }
   }, [blockMessage, toast]);
+
+  // Detectar tecla ESC para voltar
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        navigate("/");
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscKey);
+    };
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
