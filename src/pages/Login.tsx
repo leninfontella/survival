@@ -1,11 +1,18 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/services/api";
+import { Lock, AlertCircle } from "lucide-react";
+
+interface LocationState {
+  from?: string;
+  message?: string;
+}
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -13,6 +20,31 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Pegar informações do estado (de onde veio)
+  const state = location.state as LocationState;
+  const redirectPath = state?.from || "/dashboard";
+  const blockMessage = state?.message;
+
+  // Se já estiver logado, redirecionar
+  useEffect(() => {
+    if (authAPI.isAuthenticated()) {
+      console.log("✅ Já está logado, redirecionando para:", redirectPath);
+      navigate(redirectPath, { replace: true });
+    }
+  }, [navigate, redirectPath]);
+
+  // Mostrar mensagem de bloqueio se existir
+  useEffect(() => {
+    if (blockMessage) {
+      toast({
+        title: "Acesso Restrito",
+        description: blockMessage,
+        variant: "destructive",
+      });
+    }
+  }, [blockMessage, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,8 +58,11 @@ const Login = () => {
         description: "Bem-vindo de volta ao Brasileirão Survivor",
       });
 
-      // Redireciona para a página principal ao invés do dashboard
-      navigate("/");
+      // Pequeno delay para garantir que o token foi salvo
+      setTimeout(() => {
+        console.log("✅ Redirecionando para:", redirectPath);
+        navigate(redirectPath, { replace: true });
+      }, 100);
     } catch (error: unknown) {
       console.error("Erro ao fazer login:", error);
 
@@ -57,6 +92,22 @@ const Login = () => {
             </p>
           </div>
 
+          {/* Alerta de sala privada ou acesso bloqueado */}
+          {blockMessage && (
+            <Alert className="mb-6 border-amber-500/50 bg-amber-500/10">
+              <Lock className="h-4 w-4 text-amber-500" />
+              <AlertDescription className="text-amber-700 dark:text-amber-400">
+                <strong>
+                  {redirectPath.includes("/join-room")
+                    ? "🔒 Sala Privada Detectada!"
+                    : "⚠️ Acesso Restrito"}
+                </strong>
+                <br />
+                {blockMessage}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -69,6 +120,7 @@ const Login = () => {
                 required
                 className="bg-background/50 border-primary/30 focus:border-primary"
                 disabled={isLoading}
+                autoComplete="email"
               />
             </div>
 
@@ -83,6 +135,7 @@ const Login = () => {
                 required
                 className="bg-background/50 border-primary/30 focus:border-primary"
                 disabled={isLoading}
+                autoComplete="current-password"
               />
             </div>
 
@@ -101,11 +154,25 @@ const Login = () => {
               Não tem uma conta?{" "}
               <Link
                 to="/cadastro"
+                state={{ from: redirectPath }} // Passar o redirect para o cadastro também
                 className="text-primary hover:text-glow transition-colors font-semibold"
               >
                 Cadastre-se
               </Link>
             </p>
+
+            {/* Mostrar rota de redirecionamento se não for dashboard */}
+            {redirectPath !== "/dashboard" && redirectPath !== "/" && (
+              <div className="pt-2 border-t border-border/50">
+                <p className="text-xs text-muted-foreground">
+                  📍 Você será redirecionado para:
+                </p>
+                <code className="block mt-1 text-xs bg-muted px-3 py-2 rounded text-primary font-mono">
+                  {redirectPath}
+                </code>
+              </div>
+            )}
+
             <Link
               to="/"
               className="text-sm text-muted-foreground hover:text-primary transition-colors block"

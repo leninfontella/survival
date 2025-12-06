@@ -27,7 +27,9 @@ import {
   Trophy,
   Zap,
   ArrowRight,
-  RefreshCw, // ← ADICIONE ESTA LINHA
+  RefreshCw,
+  Lock,
+  LogIn,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { roomAPI, authAPI } from "@/services/api";
@@ -71,6 +73,9 @@ interface APIError {
   response?: {
     data?: {
       message?: string;
+      requiresAuth?: boolean; // ← ADICIONAR
+      isPrivate?: boolean; // ← ADICIONAR
+      roomId?: string; // ← ADICIONAR
     };
   };
   message?: string;
@@ -95,6 +100,7 @@ export default function JoinRoom() {
   );
   const [showStartingModal, setShowStartingModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [requiresAuth, setRequiresAuth] = useState(false);
 
   // Buscar dados da sala
 
@@ -191,15 +197,34 @@ export default function JoinRoom() {
         console.error("❌ Erro ao buscar sala:", error);
         console.error("📋 Detalhes:", error.response?.data);
 
-        const errorMessage =
-          error.response?.data?.message || error.message || "Erro desconhecido";
-        setError(errorMessage);
+        const errorData = error.response?.data;
 
-        toast({
-          title: "Erro ao carregar sala",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        // 🚨 DETECTAR SE REQUER AUTENTICAÇÃO
+        if (errorData?.requiresAuth && errorData?.isPrivate) {
+          console.log("🔒 SALA PRIVADA - AUTENTICAÇÃO OBRIGATÓRIA");
+          setRequiresAuth(true);
+          setError(
+            errorData.message ||
+              "Esta sala é privada. Você precisa fazer login para acessar."
+          );
+
+          // Mostrar toast
+          toast({
+            title: "🔒 Sala Privada",
+            description: "Faça login para acessar esta sala.",
+            variant: "destructive",
+          });
+        } else {
+          const errorMessage =
+            errorData?.message || error.message || "Erro desconhecido";
+          setError(errorMessage);
+
+          toast({
+            title: "Erro ao carregar sala",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -686,6 +711,81 @@ export default function JoinRoom() {
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-muted-foreground">Carregando sala...</p>
             <p className="text-xs text-muted-foreground mt-2">ID: {roomId}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 🚨 TELA DE BLOQUEIO - REQUER LOGIN
+  if (requiresAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full border-amber-500/50 bg-amber-500/5">
+          <CardContent className="pt-8 text-center space-y-6">
+            {/* Ícone de bloqueio animado */}
+            <div className="relative mx-auto w-24 h-24">
+              <div className="absolute inset-0 bg-amber-500/20 rounded-full animate-ping" />
+              <div className="relative bg-gradient-to-br from-amber-500 to-orange-500 p-6 rounded-full shadow-2xl">
+                <Lock className="w-12 h-12 text-white" />
+              </div>
+            </div>
+
+            {/* Título */}
+            <div>
+              <h2 className="text-3xl font-bold text-amber-600 mb-2">
+                🔒 Sala Privada
+              </h2>
+              <p className="text-lg text-muted-foreground">{error}</p>
+            </div>
+
+            {/* Mensagem explicativa */}
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                <strong>⚠️ Acesso Restrito</strong>
+                <br />
+                Esta sala requer que você faça login para acessar. Você receberá
+                um link de convite privado após autenticar.
+              </p>
+            </div>
+
+            {/* Informações da sala */}
+            {roomId && (
+              <div className="text-xs text-muted-foreground font-mono bg-muted p-3 rounded">
+                ID da Sala: {roomId}
+              </div>
+            )}
+
+            {/* Botões de ação */}
+            <div className="flex flex-col gap-3 pt-4">
+              <Button
+                onClick={() =>
+                  navigate("/login", {
+                    state: {
+                      from: `/join-room/${roomId}`,
+                      message:
+                        "Faça login para acessar esta sala privada e continuar.",
+                    },
+                  })
+                }
+                size="lg"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              >
+                <LogIn className="mr-2 h-5 w-5" />
+                Fazer Login para Continuar
+              </Button>
+
+              <Button variant="outline" onClick={() => navigate("/register")}>
+                Não tem conta? Cadastre-se
+              </Button>
+
+              <Link to="/dashboard">
+                <Button variant="ghost" className="w-full">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar ao Dashboard
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

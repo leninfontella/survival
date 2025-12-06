@@ -13,13 +13,12 @@ const {
 } = require("../controllers/roomController");
 const { protect, optionalAuth } = require("../middleware/auth");
 
-// Rotas com autenticação opcional (para verificar privacidade)
 router.get("/", optionalAuth, getRooms);
-router.get("/:id", optionalAuth, getRoomById);
+router.get("/:id", optionalAuth, getRoomById); // ⚠️ Retorna 401 se privada e não logado
 
-// Rotas protegidas (requerem autenticação)
+// 🔒 Rotas protegidas (REQUEREM autenticação obrigatória)
 router.post("/", protect, createRoom);
-router.post("/:id/join", protect, joinRoom);
+router.post("/:id/join", protect, joinRoom); // 🚨 OBRIGATÓRIO LOGIN
 router.put("/:id/toggle-ready", protect, toggleReady);
 router.put("/:id/start", protect, startRoom);
 router.post("/:id/select-team", protect, selectTeam);

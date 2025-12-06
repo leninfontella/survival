@@ -2,9 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { GameProvider } from "@/contexts/game";
 import { SplashScreen } from "@/components/SplashScreen";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { useState } from "react";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -34,29 +35,88 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Rotas Públicas */}
+              {/* ✅ ROTAS PÚBLICAS - Apenas Login, Signup e Index */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/cadastro" element={<Signup />} />
 
+              {/* 🔒 ROTAS PROTEGIDAS - Todas as outras rotas */}
+
               {/* Dashboard */}
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Admin */}
-              <Route path="/admin/create-room" element={<AdminCreateRoom />} />
+              {/* Admin - Criar Sala */}
+              <Route
+                path="/admin/create-room"
+                element={
+                  <ProtectedRoute>
+                    <AdminCreateRoom />
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Rotas de Sala com :roomId */}
-              <Route path="/join-room/:roomId" element={<JoinRoom />} />
+              {/* 🚨 ROTAS DE SALA - TOTALMENTE PROTEGIDAS */}
+              <Route
+                path="/join-room/:roomId"
+                element={
+                  <ProtectedRoute>
+                    <JoinRoom />
+                  </ProtectedRoute>
+                }
+              />
+
               <Route
                 path="/room/select-team/:roomId"
-                element={<SelectTeam />}
+                element={
+                  <ProtectedRoute>
+                    <SelectTeam />
+                  </ProtectedRoute>
+                }
               />
-              <Route path="/survival-room/:roomId" element={<SurvivalRoom />} />
 
-              {/* Rotas antigas (manter para compatibilidade se necessário) */}
-              <Route path="/room" element={<Room />} />
-              <Route path="/room/select-team" element={<SelectTeam />} />
-              <Route path="/survival-room" element={<SurvivalRoom />} />
+              <Route
+                path="/survival-room/:roomId"
+                element={
+                  <ProtectedRoute>
+                    <SurvivalRoom />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Rotas antigas (manter para compatibilidade) */}
+              <Route
+                path="/room"
+                element={
+                  <ProtectedRoute>
+                    <Room />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/room/select-team"
+                element={
+                  <ProtectedRoute>
+                    <SelectTeam />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/survival-room"
+                element={
+                  <ProtectedRoute>
+                    <SurvivalRoom />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* 404 - SEMPRE POR ÚLTIMO */}
               <Route path="*" element={<NotFound />} />

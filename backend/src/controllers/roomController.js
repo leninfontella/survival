@@ -50,7 +50,7 @@ exports.createRoom = async (req, res) => {
 
 // @desc    Listar todas as salas
 // @route   GET /api/rooms
-// @access  Public
+// @access  Public (com optionalAuth)
 exports.getRooms = async (req, res) => {
   try {
     const { status, league } = req.query;
@@ -116,7 +116,7 @@ exports.getRooms = async (req, res) => {
 
 // @desc    Obter sala por ID
 // @route   GET /api/rooms/:id
-// @access  Public (mas valida privacidade)
+// @access  Public (mas valida privacidade e BLOQUEIA não autenticados)
 exports.getRoomById = async (req, res) => {
   try {
     console.log("🔍 Buscando sala com ID:", req.params.id);
@@ -144,35 +144,26 @@ exports.getRoomById = async (req, res) => {
     console.log("🔒 Sala privada?", room.isPrivate);
     console.log("📊 Status da sala:", room.status);
 
-    // Verificar acesso a sala privada
+    // 🚨 VERIFICAR ACESSO A SALA PRIVADA
     if (room.isPrivate) {
-      // Se não estiver autenticado
+      // ❌ SE NÃO ESTIVER AUTENTICADO = BLOQUEAR TOTALMENTE
       if (!req.user) {
-        // Salas ativas/finalizadas: pode ver mas não pode entrar
-        if (room.status === "active" || room.status === "finished") {
-          console.log(
-            "⚠️ Usuário não autenticado visualizando sala privada ativa/finalizada"
-          );
-          return res.status(200).json({
-            success: true,
-            data: room,
-            needsInvite: true,
-            message:
-              "Esta é uma sala privada. Você precisa de um convite do criador para participar.",
-          });
-        }
-
-        // Salas aguardando: precisa estar logado
         console.log(
-          "❌ Acesso negado: usuário não autenticado tentando acessar sala privada em espera"
+          "🚫 BLOQUEIO TOTAL: Usuário não autenticado em sala privada"
         );
-        return res.status(403).json({
+
+        // Retornar 401 para forçar login
+        return res.status(401).json({
           success: false,
-          message: "Esta sala é privada. Faça login para acessar.",
+          message:
+            "Esta sala é privada. Você precisa fazer login para acessar.",
+          requiresAuth: true, // Flag para frontend detectar
+          roomId: req.params.id,
+          isPrivate: true,
         });
       }
 
-      // Verificar se é o criador
+      // ✅ Usuário autenticado - verificar se é membro
       const creatorId = room.createdBy._id || room.createdBy.id;
       const isCreator = creatorId.toString() === req.user.id;
       console.log("👑 É criador?", isCreator);
@@ -207,7 +198,9 @@ exports.getRoomById = async (req, res) => {
 
       // Se sala está aguardando e não é membro, permitir ver para entrar via convite
       if (room.status === "waiting" && !isCreator && !isPlayer) {
-        console.log("✅ Usuário com link pode ver sala privada em espera");
+        console.log(
+          "✅ Usuário autenticado pode ver sala privada em espera via link"
+        );
       }
     }
 
@@ -238,12 +231,12 @@ exports.getRoomById = async (req, res) => {
 
 // @desc    Entrar em uma sala
 // @route   POST /api/rooms/:id/join
-// @access  Private
+// @access  Private (REQUER AUTENTICAÇÃO OBRIGATÓRIA)
 exports.joinRoom = async (req, res) => {
   try {
     const { name } = req.body;
     const roomId = req.params.id;
-    const userId = req.user.id;
+    const userId = req.user.id; // req.user garantido pelo middleware protect
 
     console.log("🚪 Tentando entrar na sala:", roomId);
     console.log("👤 Usuário:", userId, "Nome:", name);
