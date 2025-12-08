@@ -140,13 +140,13 @@ export const roomAPI = {
     return response.data;
   },
 
-  // 🆕 Toggle Ready Status - Novo método
+  // Toggle Ready Status
   toggleReady: async (roomId: string) => {
     const response = await api.put(`/rooms/${roomId}/toggle-ready`);
     return response.data;
   },
 
-  // Iniciar sala (apenas admin) - Deprecated, mantido para compatibilidade
+  // Iniciar sala (apenas admin)
   start: async (roomId: string) => {
     const response = await api.put(`/rooms/${roomId}/start`);
     return response.data;
@@ -215,7 +215,7 @@ export const playerAPI = {
   },
 };
 
-// ============= TEAM ENDPOINTS (se necessário buscar times da API) =============
+// ============= TEAM ENDPOINTS =============
 
 export const teamAPI = {
   // Obter times por liga
@@ -228,6 +228,41 @@ export const teamAPI = {
   getAll: async () => {
     const response = await api.get("/teams");
     return response.data;
+  },
+};
+
+// ============= STATS ENDPOINTS =============
+
+export interface StatsData {
+  activePlayers: number;
+  totalPrize: number;
+  currentRound: number;
+  activeRooms: number;
+  finishedRooms: number;
+}
+
+export const statsAPI = {
+  // Obter estatísticas gerais da plataforma
+  getStats: async (): Promise<StatsData> => {
+    try {
+      const response = await api.get("/stats");
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Erro ao buscar estatísticas");
+      }
+
+      return response.data.data;
+    } catch (error) {
+      console.error("Erro ao buscar estatísticas:", error);
+      // Retornar valores padrão em caso de erro
+      return {
+        activePlayers: 0,
+        totalPrize: 0,
+        currentRound: 0,
+        activeRooms: 0,
+        finishedRooms: 0,
+      };
+    }
   },
 };
 

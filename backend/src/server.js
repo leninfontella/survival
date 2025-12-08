@@ -22,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 // Rotas
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/rooms", require("./routes/rooms"));
+app.use("/api/stats", require("./routes/stats")); // Nova rota de estatísticas
 
 // Rota de teste
 app.get("/", (req, res) => {
@@ -32,6 +33,7 @@ app.get("/", (req, res) => {
     endpoints: {
       auth: "/api/auth",
       rooms: "/api/rooms",
+      stats: "/api/stats",
     },
   });
 });

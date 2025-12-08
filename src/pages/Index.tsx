@@ -7,9 +7,28 @@ import { Navbar } from "@/components/Navbar";
 import { useState, useEffect } from "react";
 import { authAPI } from "@/services/api";
 
+// Importar a nova API de estatísticas
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+interface Stats {
+  activePlayers: number;
+  totalPrize: number;
+  currentRound: number;
+  activeRooms: number;
+  finishedRooms: number;
+}
+
 const Index = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [stats, setStats] = useState<Stats>({
+    activePlayers: 0,
+    totalPrize: 0,
+    currentRound: 0,
+    activeRooms: 0,
+    finishedRooms: 0,
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -18,7 +37,6 @@ const Index = () => {
 
     checkAuth();
 
-    // Listener para mudanças no localStorage
     const handleStorageChange = () => {
       checkAuth();
     };
@@ -27,12 +45,44 @@ const Index = () => {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
+  // Buscar estatísticas do backend
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoadingStats(true);
+        const response = await fetch(`${API_URL}/stats`);
+        const data = await response.json();
+
+        if (data.success) {
+          setStats(data.data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar estatísticas:", error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+
+    // Atualizar estatísticas a cada 30 segundos
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleProtectedAction = (path: string) => {
     if (isAuthenticated) {
       navigate(path);
     } else {
       navigate("/login");
     }
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
   };
 
   return (
@@ -87,22 +137,50 @@ const Index = () => {
               <Card className="bg-card/50 backdrop-blur border-primary/20 hover:border-primary/50 transition-all hover:scale-105">
                 <CardContent className="pt-6 text-center">
                   <Users className="w-12 h-12 mx-auto mb-4 text-primary" />
-                  <h3 className="text-2xl font-bold mb-2">1.247</h3>
+                  <h3 className="text-2xl font-bold mb-2">
+                    {isLoadingStats ? (
+                      <span className="animate-pulse">...</span>
+                    ) : (
+                      stats.activePlayers.toLocaleString("pt-BR")
+                    )}
+                  </h3>
                   <p className="text-muted-foreground">Jogadores Ativos</p>
                 </CardContent>
               </Card>
               <Card className="bg-card/50 backdrop-blur border-primary/20 hover:border-primary/50 transition-all hover:scale-105">
                 <CardContent className="pt-6 text-center">
                   <Trophy className="w-12 h-12 mx-auto mb-4 text-accent" />
-                  <h3 className="text-2xl font-bold mb-2">R$ 150.000</h3>
-                  <p className="text-muted-foreground">Prêmio Acumulado</p>
+                  <h3 className="text-2xl font-bold mb-2">
+                    {isLoadingStats ? (
+                      <span className="animate-pulse">...</span>
+                    ) : (
+                      formatCurrency(stats.totalPrize)
+                    )}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Prêmio Acumulado em salas
+                  </p>
                 </CardContent>
               </Card>
               <Card className="bg-card/50 backdrop-blur border-primary/20 hover:border-primary/50 transition-all hover:scale-105">
                 <CardContent className="pt-6 text-center">
                   <Target className="w-12 h-12 mx-auto mb-4 text-primary" />
-                  <h3 className="text-2xl font-bold mb-2">Rodada 8</h3>
-                  <p className="text-muted-foreground">Em Andamento</p>
+                  <h3 className="text-2xl font-bold mb-2">
+                    {isLoadingStats ? (
+                      <span className="animate-pulse">...</span>
+                    ) : stats.currentRound > 0 ? (
+                      `Rodada ${stats.currentRound}`
+                    ) : (
+                      "Aguardando"
+                    )}
+                  </h3>
+                  <p className="text-muted-foreground">
+                    {stats.activeRooms > 0
+                      ? `${stats.activeRooms} sala${
+                          stats.activeRooms !== 1 ? "s" : ""
+                        } ativa${stats.activeRooms !== 1 ? "s" : ""}`
+                      : "Nenhuma sala ativa"}
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -249,7 +327,11 @@ const Index = () => {
             <TrendingUp className="w-20 h-20 mx-auto text-primary animate-bounce" />
             <h2 className="text-5xl md:text-6xl font-bold">Prêmio Atual</h2>
             <div className="text-7xl md:text-8xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              R$ 150.000
+              {isLoadingStats ? (
+                <span className="animate-pulse">...</span>
+              ) : (
+                formatCurrency(stats.totalPrize)
+              )}
             </div>
             <p className="text-xl text-muted-foreground">
               O prêmio aumenta a cada novo jogador na sala! Entre agora e
