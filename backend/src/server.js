@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/database");
+const matchResultsChecker = require("./jobs/matchResultsChecker.job");
 
 // Conectar ao banco de dados
 connectDB();
@@ -22,7 +23,8 @@ app.use(express.urlencoded({ extended: true }));
 // Rotas
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/rooms", require("./routes/rooms"));
-app.use("/api/stats", require("./routes/stats")); // Nova rota de estatísticas
+app.use("/api/stats", require("./routes/stats"));
+app.use("/api/match-results", require("./routes/matchResults.routes")); // 🆕 NOVA ROTA
 
 // Rota de teste
 app.get("/", (req, res) => {
@@ -34,6 +36,11 @@ app.get("/", (req, res) => {
       auth: "/api/auth",
       rooms: "/api/rooms",
       stats: "/api/stats",
+      matchResults: "/api/match-results", // 🆕
+    },
+    features: {
+      autoMatchChecking: true,
+      checkInterval: "30 minutos",
     },
   });
 });
@@ -56,6 +63,14 @@ app.use((req, res) => {
   });
 });
 
+// 🆕 INICIALIZAR O CRON JOB DE VERIFICAÇÃO DE RESULTADOS
+if (process.env.ENABLE_AUTO_CHECKER !== "false") {
+  matchResultsChecker.start();
+  console.log("✅ Verificador automático de resultados iniciado");
+} else {
+  console.log("⚠️ Verificador automático desabilitado via ENV");
+}
+
 // Iniciar servidor
 const PORT = process.env.PORT || 5000;
 
@@ -63,4 +78,9 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`📊 Ambiente: ${process.env.NODE_ENV || "development"}`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
+  console.log(
+    `🤖 Verificador automático: ${
+      process.env.ENABLE_AUTO_CHECKER !== "false" ? "ATIVO" : "DESABILITADO"
+    }`
+  );
 });

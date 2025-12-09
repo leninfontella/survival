@@ -33,7 +33,7 @@ const PlayerSchema = new mongoose.Schema({
   selectedTeams: [
     {
       teamId: {
-        type: String,
+        type: String, // ID do time na API externa (TheSportsDB)
         required: true,
       },
       teamName: {
@@ -46,7 +46,18 @@ const PlayerSchema = new mongoose.Schema({
       },
       won: {
         type: Boolean,
-        default: null,
+        default: null, // null = ainda não verificado, true = venceu, false = perdeu/empatou
+      },
+      selectedAt: {
+        type: Date,
+        default: Date.now,
+      },
+      matchResult: {
+        homeTeam: String,
+        awayTeam: String,
+        homeScore: Number,
+        awayScore: Number,
+        verifiedAt: Date,
       },
     },
   ],
@@ -64,7 +75,38 @@ const PlayerSchema = new mongoose.Schema({
   },
 });
 
-// Índice composto para garantir que um usuário não entre duas vezes na mesma sala
+// Índices compostos para garantir unicidade e otimizar queries
 PlayerSchema.index({ user: 1, room: 1 }, { unique: true });
+PlayerSchema.index({ room: 1, isEliminated: 1 });
+
+// Método para verificar se o jogador selecionou time na rodada atual
+PlayerSchema.methods.hasSelectedTeamForRound = function (round) {
+  return this.selectedTeams.some((selection) => selection.round === round);
+};
+
+// Método para obter a seleção da rodada atual
+PlayerSchema.methods.getSelectionForRound = function (round) {
+  return this.selectedTeams.find((selection) => selection.round === round);
+};
+
+// Método para obter times já usados (IDs)
+PlayerSchema.methods.getUsedTeamIds = function () {
+  return this.selectedTeams.map((selection) => selection.teamId);
+};
+
+// Método para verificar se pode selecionar um time
+PlayerSchema.methods.canSelectTeam = function (teamId, currentRound) {
+  // Verificar se já foi eliminado
+  if (this.isEliminated) return false;
+
+  // Verificar se já selecionou para esta rodada
+  if (this.hasSelectedTeamForRound(currentRound)) return false;
+
+  // Verificar se o time já foi usado
+  const usedTeamIds = this.getUsedTeamIds();
+  if (usedTeamIds.includes(teamId)) return false;
+
+  return true;
+};
 
 module.exports = mongoose.model("Player", PlayerSchema);

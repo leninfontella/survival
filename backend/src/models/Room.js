@@ -58,6 +58,26 @@ const RoomSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Player",
   },
+  // 🆕 NOVOS CAMPOS PARA CONTROLE DE RESULTADOS
+  lastResultsCheck: {
+    type: Date,
+    default: null,
+    index: true,
+  },
+  roundsData: [
+    {
+      round: Number,
+      startedAt: Date,
+      completedAt: Date,
+      matchesFinished: Boolean,
+      survivors: Number,
+      eliminated: Number,
+    },
+  ],
+  autoAdvanceEnabled: {
+    type: Boolean,
+    default: true, // Habilita avanço automático de rodadas
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -77,5 +97,47 @@ RoomSchema.pre("save", function (next) {
   }
   next();
 });
+
+// 🆕 Método para registrar dados da rodada
+RoomSchema.methods.recordRoundData = function (survivors, eliminated) {
+  const existingRound = this.roundsData.find(
+    (r) => r.round === this.currentRound
+  );
+
+  if (existingRound) {
+    existingRound.completedAt = Date.now();
+    existingRound.matchesFinished = true;
+    existingRound.survivors = survivors;
+    existingRound.eliminated = eliminated;
+  } else {
+    this.roundsData.push({
+      round: this.currentRound,
+      startedAt: Date.now(),
+      completedAt: Date.now(),
+      matchesFinished: true,
+      survivors,
+      eliminated,
+    });
+  }
+};
+
+// 🆕 Método para verificar se pode avançar rodada
+RoomSchema.methods.canAdvanceRound = function () {
+  if (!this.autoAdvanceEnabled) return false;
+  if (this.status !== "active") return false;
+  if (this.currentRound >= this.totalRounds) return false;
+
+  // Verificar se os resultados da rodada atual foram processados
+  const currentRoundData = this.roundsData.find(
+    (r) => r.round === this.currentRound
+  );
+
+  return currentRoundData && currentRoundData.matchesFinished;
+};
+
+// Índices para performance
+RoomSchema.index({ status: 1, league: 1 });
+RoomSchema.index({ createdBy: 1 });
+RoomSchema.index({ status: 1, lastResultsCheck: 1 }); // Para o cron job
 
 module.exports = mongoose.model("Room", RoomSchema);
