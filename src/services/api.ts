@@ -266,4 +266,288 @@ export const statsAPI = {
   },
 };
 
+// ============= MATCH RESULTS ENDPOINTS (NOVO) =============
+
+export interface MatchData {
+  id: string;
+  homeTeamId: string;
+  homeTeamName: string;
+  awayTeamId: string;
+  awayTeamName: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: string;
+  date: string;
+  time: string;
+  round: number;
+  season: string;
+}
+
+export interface TeamData {
+  id: string;
+  name: string;
+  alternateNames: string[];
+  badge: string;
+  stadium: string;
+}
+
+export interface MatchResultData {
+  won: boolean;
+  draw: boolean;
+  finished: boolean;
+  homeScore?: number;
+  awayScore?: number;
+  message: string;
+}
+
+export interface CheckerStatusData {
+  isActive: boolean;
+  checkInterval: string;
+  activeRooms: number;
+  lastCheck: string;
+}
+
+export interface RoundStatsData {
+  total: number;
+  finished: number;
+  pending: number;
+  percentComplete: number;
+}
+
+export interface ForceCheckRoomResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    room?: {
+      _id: string;
+      name: string;
+      status: string;
+      currentRound: number;
+    };
+    processedPlayers?: number;
+    eliminatedPlayers?: number;
+  };
+}
+
+export const matchResultsAPI = {
+  // Buscar partidas de uma rodada
+  getMatchesByRound: async (
+    league: string,
+    round: number
+  ): Promise<MatchData[]> => {
+    try {
+      const response = await api.get(
+        `/match-results/matches/${league}/${round}`
+      );
+      return response.data.success ? response.data.data : [];
+    } catch (error) {
+      console.error("Erro ao buscar partidas:", error);
+      return [];
+    }
+  },
+
+  // Buscar detalhes de uma partida
+  getMatchDetails: async (matchId: string): Promise<MatchData | null> => {
+    try {
+      const response = await api.get(`/match-results/match/${matchId}`);
+      return response.data.success ? response.data.data : null;
+    } catch (error) {
+      console.error("Erro ao buscar detalhes da partida:", error);
+      return null;
+    }
+  },
+
+  // Buscar times de uma liga
+  getTeamsByLeague: async (league: string): Promise<TeamData[]> => {
+    try {
+      const response = await api.get(`/match-results/teams/${league}`);
+      return response.data.success ? response.data.data : [];
+    } catch (error) {
+      console.error("Erro ao buscar times:", error);
+      return [];
+    }
+  },
+
+  // Verificar resultado de uma partida para um time
+  checkMatchResult: async (
+    matchId: string,
+    teamId: string
+  ): Promise<MatchResultData | null> => {
+    try {
+      const response = await api.get(
+        `/match-results/check/${matchId}/${teamId}`
+      );
+      return response.data.success ? response.data.data : null;
+    } catch (error) {
+      console.error("Erro ao verificar resultado:", error);
+      return null;
+    }
+  },
+
+  // Buscar próximas partidas de um time
+  getNextMatches: async (
+    teamId: string,
+    limit: number = 5
+  ): Promise<MatchData[]> => {
+    try {
+      const response = await api.get(
+        `/match-results/next/${teamId}?limit=${limit}`
+      );
+      return response.data.success ? response.data.data : [];
+    } catch (error) {
+      console.error("Erro ao buscar próximas partidas:", error);
+      return [];
+    }
+  },
+
+  // Buscar últimas partidas de um time
+  getLastMatches: async (
+    teamId: string,
+    limit: number = 5
+  ): Promise<MatchData[]> => {
+    try {
+      const response = await api.get(
+        `/match-results/last/${teamId}?limit=${limit}`
+      );
+      return response.data.success ? response.data.data : [];
+    } catch (error) {
+      console.error("Erro ao buscar últimas partidas:", error);
+      return [];
+    }
+  },
+
+  // Forçar verificação manual de uma sala
+  forceCheckRoom: async (roomId: string): Promise<ForceCheckRoomResponse> => {
+    try {
+      const response = await api.post(`/match-results/check-room/${roomId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao forçar verificação:", error);
+      throw error;
+    }
+  },
+
+  // Buscar status do verificador automático
+  getCheckerStatus: async (): Promise<CheckerStatusData | null> => {
+    try {
+      const response = await api.get("/match-results/checker-status");
+      return response.data.success ? response.data.data : null;
+    } catch (error) {
+      console.error("Erro ao buscar status do verificador:", error);
+      return null;
+    }
+  },
+
+  // Verificar se rodada está completa
+  checkRoundCompleted: async (
+    league: string,
+    round: number
+  ): Promise<boolean> => {
+    try {
+      const matches = await matchResultsAPI.getMatchesByRound(league, round);
+
+      if (matches.length === 0) {
+        return false;
+      }
+
+      return matches.every(
+        (match) =>
+          match.status === "Match Finished" ||
+          (match.homeScore !== null && match.awayScore !== null)
+      );
+    } catch (error) {
+      console.error("Erro ao verificar rodada completa:", error);
+      return false;
+    }
+  },
+
+  // Buscar partida de um time em uma rodada
+  getTeamMatchInRound: async (
+    league: string,
+    round: number,
+    teamId: string
+  ): Promise<MatchData | null> => {
+    try {
+      const matches = await matchResultsAPI.getMatchesByRound(league, round);
+
+      const teamMatch = matches.find(
+        (match) => match.homeTeamId === teamId || match.awayTeamId === teamId
+      );
+
+      return teamMatch || null;
+    } catch (error) {
+      console.error("Erro ao buscar partida do time:", error);
+      return null;
+    }
+  },
+
+  // Calcular estatísticas de uma rodada
+  getRoundStats: async (
+    league: string,
+    round: number
+  ): Promise<RoundStatsData> => {
+    try {
+      const matches = await matchResultsAPI.getMatchesByRound(league, round);
+
+      const total = matches.length;
+      const finished = matches.filter(
+        (match) =>
+          match.status === "Match Finished" ||
+          (match.homeScore !== null && match.awayScore !== null)
+      ).length;
+      const pending = total - finished;
+      const percentComplete =
+        total > 0 ? Math.round((finished / total) * 100) : 0;
+
+      return {
+        total,
+        finished,
+        pending,
+        percentComplete,
+      };
+    } catch (error) {
+      console.error("Erro ao calcular estatísticas da rodada:", error);
+      return {
+        total: 0,
+        finished: 0,
+        pending: 0,
+        percentComplete: 0,
+      };
+    }
+  },
+
+  // Verificar se um time venceu uma partida
+  didTeamWin: (match: MatchData, teamId: string): boolean | null => {
+    if (match.homeScore === null || match.awayScore === null) {
+      return null; // Partida não finalizada
+    }
+
+    // Empate = perda
+    if (match.homeScore === match.awayScore) {
+      return false;
+    }
+
+    // Time mandante
+    if (match.homeTeamId === teamId) {
+      return match.homeScore > match.awayScore;
+    }
+
+    // Time visitante
+    if (match.awayTeamId === teamId) {
+      return match.awayScore > match.homeScore;
+    }
+
+    return null;
+  },
+
+  // Formatar resultado de uma partida
+  formatMatchResult: (match: MatchData): string => {
+    if (match.homeScore === null || match.awayScore === null) {
+      return "Partida não iniciada";
+    }
+
+    return `${match.homeTeamName} ${match.homeScore} x ${match.awayScore} ${match.awayTeamName}`;
+  },
+};
+
 export default api;

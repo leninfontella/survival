@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TeamTransition } from "@/components/TeamTransition";
 import { roomAPI, authAPI } from "@/services/api";
 import { useGame } from "@/hooks/useGame";
+import { History } from "lucide-react";
+import { MatchResultBadge } from "@/components/MatchResultIndicator";
 
 type League =
   | "brasil"
@@ -36,6 +38,19 @@ interface RoomData {
   prizePool: number;
 }
 
+interface Selection {
+  teamId: string;
+  teamName: string;
+  round: number;
+  won: boolean | null;
+  matchResult?: {
+    homeTeam: string;
+    awayTeam: string;
+    homeScore: number;
+    awayScore: number;
+  };
+}
+
 export default function SelectTeam() {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
@@ -46,6 +61,8 @@ export default function SelectTeam() {
   const [showTransition, setShowTransition] = useState(false);
   const [usedTeams, setUsedTeams] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [playerSelections, setPlayerSelections] = useState<Selection[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Debug: Verificar roomId
   useEffect(() => {
@@ -90,6 +107,15 @@ export default function SelectTeam() {
         if (usedTeamsResponse.success) {
           setUsedTeams(usedTeamsResponse.data.usedTeams);
           console.log("✅ Times já usados:", usedTeamsResponse.data.usedTeams);
+
+          // 🆕 NOVO: Armazenar seleções com resultados
+          if (usedTeamsResponse.data.selections) {
+            setPlayerSelections(usedTeamsResponse.data.selections);
+            console.log(
+              "✅ Seleções anteriores:",
+              usedTeamsResponse.data.selections
+            );
+          }
         }
       } catch (error) {
         console.error("❌ Erro ao buscar sala:", error);
@@ -255,12 +281,24 @@ export default function SelectTeam() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Link to={`/survival-room/${roomId}`}>
-              <Button variant="ghost" className="mb-6 hover:bg-primary/10">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
-              </Button>
-            </Link>
+            <div className="flex items-center justify-between mb-6">
+              <Link to={`/survival-room/${roomId}`}>
+                <Button variant="ghost" className="hover:bg-primary/10">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar
+                </Button>
+              </Link>
+
+              {playerSelections.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowHistory(!showHistory)}
+                >
+                  <History className="mr-2 h-4 w-4" />
+                  {showHistory ? "Ocultar" : "Ver"} Histórico
+                </Button>
+              )}
+            </div>
           </motion.div>
 
           <div className="max-w-6xl mx-auto space-y-6">
@@ -534,6 +572,124 @@ export default function SelectTeam() {
                           </motion.div>
                         ) : null;
                       })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Previous Selections History - NOVO */}
+            {showHistory && playerSelections.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-xl">
+                  <CardHeader className="border-b border-border/50">
+                    <div className="flex items-center gap-2">
+                      <History className="h-5 w-5 text-primary" />
+                      <CardTitle className="text-xl">
+                        Histórico de Seleções
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-3">
+                      {playerSelections
+                        .sort((a, b) => b.round - a.round)
+                        .map((selection, index) => {
+                          const team = availableTeams.find(
+                            (t) => t.id === selection.teamId
+                          );
+
+                          return (
+                            <motion.div
+                              key={`${selection.round}-${selection.teamId}`}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              className={`p-4 rounded-lg border ${
+                                selection.won === true
+                                  ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                                  : selection.won === false
+                                  ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                  : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  {/* Badge da rodada */}
+                                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                                    <span className="text-sm font-bold text-primary">
+                                      R{selection.round}
+                                    </span>
+                                  </div>
+
+                                  {/* Logo do time */}
+                                  {team && (
+                                    <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center p-1.5">
+                                      <img
+                                        src={team.logo}
+                                        alt={team.name}
+                                        className="w-full h-full object-contain"
+                                        onError={(e) => {
+                                          e.currentTarget.src =
+                                            "https://via.placeholder.com/40x40?text=" +
+                                            team.name.charAt(0);
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* Info */}
+                                  <div>
+                                    <p className="font-semibold text-sm">
+                                      {selection.teamName}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Rodada {selection.round}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Status badge */}
+                                <MatchResultBadge
+                                  won={selection.won}
+                                  size="md"
+                                />
+                              </div>
+
+                              {/* Resultado da partida */}
+                              {selection.matchResult && (
+                                <div className="mt-3 pt-3 border-t border-border/50">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="text-center flex-1">
+                                      <p className="font-medium">
+                                        {selection.matchResult.homeTeam}
+                                      </p>
+                                      <p className="text-lg font-bold mt-1">
+                                        {selection.matchResult.homeScore}
+                                      </p>
+                                    </div>
+                                    <div className="px-3 text-muted-foreground">
+                                      ×
+                                    </div>
+                                    <div className="text-center flex-1">
+                                      <p className="font-medium">
+                                        {selection.matchResult.awayTeam}
+                                      </p>
+                                      <p className="text-lg font-bold mt-1">
+                                        {selection.matchResult.awayScore}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </motion.div>
+                          );
+                        })}
                     </div>
                   </CardContent>
                 </Card>
