@@ -59,38 +59,123 @@ export const useMatchResults = ({
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const emptyCountRef = useRef(0); // 🆕 Contador de tentativas vazias
+  const isMountedRef = useRef(true); // 🆕 Controle de montagem
 
   /**
    * Busca dados da rodada atual
    */
   const fetchMatchResults = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
     try {
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
-      // Buscar todas as partidas da rodada
+      // 🆕 Buscar partidas UMA VEZ
       const matches = await getMatchesByRound(league, currentRound);
 
-      // Buscar partida do time selecionado (se houver)
+      // Verificar se há partidas
+      if (matches.length === 0) {
+        emptyCountRef.current++;
+        console.log(
+          `⚠️ Nenhuma partida encontrada (tentativa ${emptyCountRef.current}/3)`
+        );
+
+        if (emptyCountRef.current >= 3) {
+          console.log("⏹️ Parando polling - sem partidas após 3 tentativas");
+
+          if (!isMountedRef.current) return;
+
+          setState({
+            matches: [],
+            teamMatch: null,
+            isRoundComplete: false,
+            teamResult: null,
+            loading: false,
+            error: "Nenhuma partida disponível para esta rodada",
+            stats: {
+              total: 0,
+              finished: 0,
+              pending: 0,
+              percentComplete: 0,
+            },
+          });
+
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+
+          return;
+        }
+
+        // 🆕 Retornar estado vazio sem fazer mais chamadas
+        if (!isMountedRef.current) return;
+
+        setState({
+          matches: [],
+          teamMatch: null,
+          isRoundComplete: false,
+          teamResult: null,
+          loading: false,
+          error: null,
+          stats: {
+            total: 0,
+            finished: 0,
+            pending: 0,
+            percentComplete: 0,
+          },
+        });
+
+        return;
+      }
+
+      // Reset contador se encontrou partidas
+      emptyCountRef.current = 0;
+
+      // 🆕 Calcular tudo localmente a partir das partidas já obtidas
       let teamMatch: Match | null = null;
       let teamResult: boolean | null = null;
 
       if (selectedTeamId) {
-        teamMatch = await getTeamMatchInRound(
-          league,
-          currentRound,
-          selectedTeamId
-        );
+        // Encontrar partida do time nas partidas já obtidas
+        teamMatch =
+          matches.find(
+            (m) =>
+              m.homeTeamId === selectedTeamId || m.awayTeamId === selectedTeamId
+          ) || null;
 
         if (teamMatch) {
           teamResult = didTeamWin(teamMatch, selectedTeamId);
         }
       }
 
-      // Verificar se a rodada foi completa
-      const isRoundComplete = await checkRoundCompleted(league, currentRound);
+      // 🆕 Verificar se rodada está completa (localmente)
+      const isRoundComplete = matches.every(
+        (match) =>
+          match.status === "Match Finished" ||
+          (match.homeScore !== null && match.awayScore !== null)
+      );
 
-      // Calcular estatísticas
-      const stats = await getRoundStats(league, currentRound);
+      // 🆕 Calcular estatísticas (localmente)
+      const total = matches.length;
+      const finished = matches.filter(
+        (match) =>
+          match.status === "Match Finished" ||
+          (match.homeScore !== null && match.awayScore !== null)
+      ).length;
+      const pending = total - finished;
+      const percentComplete =
+        total > 0 ? Math.round((finished / total) * 100) : 0;
+
+      const stats = {
+        total,
+        finished,
+        pending,
+        percentComplete,
+      };
+
+      if (!isMountedRef.current) return;
 
       setState({
         matches,
@@ -103,6 +188,9 @@ export const useMatchResults = ({
       });
     } catch (error) {
       console.error("Erro ao buscar resultados:", error);
+
+      if (!isMountedRef.current) return;
+
       setState((prev) => ({
         ...prev,
         loading: false,
@@ -115,20 +203,32 @@ export const useMatchResults = ({
    * Configurar auto-refresh
    */
   useEffect(() => {
+    isMountedRef.current = true;
+    emptyCountRef.current = 0; // Reset contador
+
     // Buscar dados inicialmente
     fetchMatchResults();
 
     // Configurar polling se auto-refresh estiver habilitado
     if (autoRefresh) {
       intervalRef.current = setInterval(() => {
+        // 🆕 Não fazer polling se já tentou 3 vezes sem sucesso
+        if (emptyCountRef.current >= 3) {
+          console.log("⏹️ Polling já foi parado");
+          return;
+        }
+
         fetchMatchResults();
       }, refreshInterval);
     }
 
     // Cleanup
     return () => {
+      isMountedRef.current = false;
+
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [fetchMatchResults, autoRefresh, refreshInterval]);
@@ -137,6 +237,7 @@ export const useMatchResults = ({
    * Forçar atualização manual
    */
   const refresh = useCallback(() => {
+    emptyCountRef.current = 0; // 🆕 Reset contador ao forçar refresh
     fetchMatchResults();
   }, [fetchMatchResults]);
 
@@ -147,6 +248,7 @@ export const useMatchResults = ({
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+      console.log("⏹️ Auto-refresh parado manualmente");
     }
   }, []);
 
@@ -154,10 +256,18 @@ export const useMatchResults = ({
    * Retomar auto-refresh
    */
   const startAutoRefresh = useCallback(() => {
-    if (!intervalRef.current && autoRefresh) {
+    if (!intervalRef.current && autoRefresh && isMountedRef.current) {
+      emptyCountRef.current = 0; // 🆕 Reset contador ao retomar
+
       intervalRef.current = setInterval(() => {
+        if (emptyCountRef.current >= 3) {
+          console.log("⏹️ Polling já foi parado");
+          return;
+        }
         fetchMatchResults();
       }, refreshInterval);
+
+      console.log("▶️ Auto-refresh retomado");
     }
   }, [autoRefresh, refreshInterval, fetchMatchResults]);
 
@@ -181,20 +291,30 @@ export const useRoundStatus = (
   const [isComplete, setIsComplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
   const checkStatus = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
     try {
       setLoading(true);
       const complete = await checkRoundCompleted(league, round);
-      setIsComplete(complete);
+
+      if (isMountedRef.current) {
+        setIsComplete(complete);
+      }
     } catch (error) {
       console.error("Erro ao verificar status da rodada:", error);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [league, round]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     checkStatus();
 
     if (autoRefresh && !isComplete) {
@@ -202,8 +322,11 @@ export const useRoundStatus = (
     }
 
     return () => {
+      isMountedRef.current = false;
+
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [checkStatus, autoRefresh, refreshInterval, isComplete]);
@@ -222,6 +345,9 @@ export const useRoundChangeDetector = (
 
   useEffect(() => {
     if (currentRound !== previousRoundRef.current) {
+      console.log(
+        `🔄 Mudança de rodada detectada: ${previousRoundRef.current} → ${currentRound}`
+      );
       onRoundChange(currentRound);
       previousRoundRef.current = currentRound;
     }
@@ -239,6 +365,7 @@ export const useEliminationDetector = (
 
   useEffect(() => {
     if (isEliminated && !wasEliminatedRef.current) {
+      console.log("❌ Eliminação detectada!");
       onEliminated();
       wasEliminatedRef.current = true;
     }
@@ -271,8 +398,8 @@ export const useActiveSurvivorRoom = ({
     league,
     currentRound,
     selectedTeamId,
-    autoRefresh: !isEliminated, // Para de atualizar se eliminado
-    refreshInterval: 60000, // 1 minuto
+    autoRefresh: !isEliminated, // 🆕 Para de atualizar se eliminado
+    refreshInterval: 120000, // 🆕 2 minutos (aumentado de 1)
   });
 
   // Detectar mudança de rodada
@@ -283,7 +410,7 @@ export const useActiveSurvivorRoom = ({
 
   // Detectar eliminação
   useEliminationDetector(isEliminated, () => {
-    console.log("❌ Jogador eliminado!");
+    console.log("❌ Jogador eliminado - parando polling!");
     matchResults.stopAutoRefresh();
     if (onEliminated) {
       onEliminated();
@@ -293,6 +420,7 @@ export const useActiveSurvivorRoom = ({
   // Detectar conclusão da rodada
   useEffect(() => {
     if (matchResults.isRoundComplete && onRoundComplete) {
+      console.log("✅ Rodada completa!");
       onRoundComplete();
     }
   }, [matchResults.isRoundComplete, onRoundComplete]);

@@ -15,8 +15,8 @@ class MatchResultsChecker {
   start() {
     console.log("🤖 Iniciando verificador de resultados...");
 
-    // Executa a cada 30 minutos
-    cron.schedule("*/30 * * * *", async () => {
+    // 🆕 Executa a cada 2 HORAS para evitar rate limit
+    cron.schedule("0 */2 * * *", async () => {
       if (this.isRunning) {
         console.log("⏳ Verificação já em andamento, aguardando...");
         return;
@@ -34,7 +34,7 @@ class MatchResultsChecker {
       }
     });
 
-    console.log("✅ Verificador de resultados ativo (a cada 30 minutos)");
+    console.log("✅ Verificador de resultados ativo (a cada 2 horas)");
 
     // Executa uma verificação inicial após 1 minuto
     setTimeout(() => {
@@ -62,6 +62,12 @@ class MatchResultsChecker {
       for (const room of activeRooms) {
         try {
           await this.checkRoomResults(room);
+
+          // 🆕 Aguardar 3 segundos entre cada sala
+          if (activeRooms.indexOf(room) < activeRooms.length - 1) {
+            console.log("⏳ Aguardando 3s antes da próxima sala...");
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+          }
         } catch (error) {
           console.error(
             `❌ Erro ao verificar sala ${room.name}:`,

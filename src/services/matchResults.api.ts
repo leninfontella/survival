@@ -1,4 +1,5 @@
 import axios from "axios";
+import { frontendCache } from "@/utils/apiCache";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -50,17 +51,37 @@ export const getMatchesByRound = async (
   round: number
 ): Promise<Match[]> => {
   try {
+    // 🆕 Verificar cache primeiro
+    const cacheKey = frontendCache.generateKey("matches", { league, round });
+    const cachedData = frontendCache.get(cacheKey);
+
+    if (cachedData !== null) {
+      return cachedData;
+    }
+
     const response = await axios.get(
       `${API_URL}/match-results/matches/${league}/${round}`
     );
 
     if (response.data.success) {
-      return response.data.data;
+      const matches = response.data.data;
+
+      // 🆕 Cachear por 2 minutos
+      frontendCache.set(cacheKey, matches, 120000);
+
+      return matches;
     }
 
     throw new Error("Erro ao buscar partidas");
   } catch (error) {
     console.error("Erro ao buscar partidas:", error);
+
+    // 🆕 Se for 429, retornar array vazio ao invés de erro
+    if (axios.isAxiosError(error) && error.response?.status === 429) {
+      console.warn("⚠️ Rate limit atingido - retornando cache vazio");
+      return [];
+    }
+
     throw error;
   }
 };

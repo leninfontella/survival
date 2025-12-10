@@ -1,4 +1,5 @@
 const axios = require("axios");
+const apiCache = require("../utils/apiCache"); // 🆕 NOVO
 
 // TheSportsDB API (versão gratuita)
 const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || "3"; // "3" é a chave de teste
@@ -28,19 +29,43 @@ class SportsAPIService {
         throw new Error(`Liga não encontrada: ${league}`);
       }
 
-      const season = new Date().getFullYear(); // Ano atual
+      const season = new Date().getFullYear();
+
+      // 🆕 Verificar cache primeiro
+      const cacheKey = apiCache.generateKey("matches", {
+        league,
+        round,
+        season,
+      });
+      const cachedData = apiCache.get(cacheKey, 600000); // Cache por 10 minutos
+
+      if (cachedData) {
+        return cachedData;
+      }
+
+      // 🆕 Rate limiting
+      await apiCache.waitForRateLimit(`matches_${league}`);
+
       const url = `${BASE_URL}/${THESPORTSDB_API_KEY}/eventsround.php?id=${leagueId}&r=${round}&s=${season}`;
 
       console.log(`🔍 Buscando partidas: Liga ${league}, Rodada ${round}`);
-      console.log(`📡 URL: ${url}`);
 
       const response = await axios.get(url);
 
       if (!response.data || !response.data.events) {
-        console.log("⚠️ Nenhuma partida encontrada");
-        return [];
-      }
+        console.log(
+          `⚠️ Nenhuma partida encontrada para ${league} - Rodada ${round}`
+        );
 
+        // 🆕 CACHEAR RESULTADO VAZIO POR 1 HORA para evitar requisições repetidas
+        const emptyResult = [];
+        apiCache.set(cacheKey, emptyResult);
+
+        console.log(
+          "💾 Cache SET (vazio) - Não vai buscar novamente por 1 hora"
+        );
+        return emptyResult;
+      }
       const matches = response.data.events.map((event) => ({
         id: event.idEvent,
         homeTeamId: event.idHomeTeam,
@@ -49,16 +74,30 @@ class SportsAPIService {
         awayTeamName: event.strAwayTeam,
         homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : null,
         awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : null,
-        status: event.strStatus, // "Match Finished", "Not Started", etc
+        status: event.strStatus,
         date: event.dateEvent,
         time: event.strTime,
         round: event.intRound,
         season: event.strSeason,
       }));
 
+      // 🆕 Armazenar no cache
+      apiCache.set(cacheKey, matches);
+
       console.log(`✅ ${matches.length} partidas encontradas`);
       return matches;
     } catch (error) {
+      // 🆕 Tratamento especial para rate limit
+      if (error.response && error.response.status === 429) {
+        console.error("🚫 RATE LIMIT ATINGIDO - Aguarde 60 segundos");
+        console.error(
+          "💡 DICA: Reduza a frequência de verificações no cron job"
+        );
+
+        // Retornar array vazio em vez de erro
+        return [];
+      }
+
       console.error("❌ Erro ao buscar partidas:", error.message);
       throw error;
     }
