@@ -7,8 +7,13 @@ const requestCache = new Map();
 
 // Limpar cache de requisições a cada 5 minutos
 setInterval(() => {
+  const before = requestCache.size;
   requestCache.clear();
+  console.log(`🗑️ Request cache limpo (${before} entradas removidas)`);
 }, 300000);
+
+// 🔥 FIX: Intervalo mínimo aumentado para 10 segundos
+const MIN_REQUEST_INTERVAL = 10000; // 10 segundos
 
 // @desc    Buscar partidas de uma rodada
 // @route   GET /api/match-results/matches/:league/:round
@@ -17,22 +22,30 @@ exports.getMatchesByRound = async (req, res) => {
   try {
     const { league, round } = req.params;
 
-    // 🆕 Identificador único (IP ou user ID)
+    // Identificador único (IP ou user ID)
     const requestKey = `${
       req.ip || req.connection.remoteAddress
     }_${league}_${round}`;
     const lastRequest = requestCache.get(requestKey);
     const now = Date.now();
 
-    // 🆕 Bloquear se fez requisição há menos de 5 segundos
-    if (lastRequest && now - lastRequest < 5000) {
-      const waitTime = Math.ceil((5000 - (now - lastRequest)) / 1000);
-      console.log(`🚫 Requisição bloqueada - aguarde ${waitTime}s`);
+    // 🔥 FIX: Bloquear se fez requisição há menos de 10 segundos
+    if (lastRequest && now - lastRequest < MIN_REQUEST_INTERVAL) {
+      const waitTime = Math.ceil(
+        (MIN_REQUEST_INTERVAL - (now - lastRequest)) / 1000
+      );
+      console.log(
+        `🚫 Rate limit: ${requestKey.substring(
+          0,
+          30
+        )}... - aguarde ${waitTime}s`
+      );
 
       return res.status(429).json({
         success: false,
-        message: `Muitas requisições. Aguarde ${waitTime} segundos.`,
+        message: `Limite de requisições atingido. Aguarde ${waitTime} segundos antes de tentar novamente.`,
         retryAfter: waitTime,
+        hint: "O sistema atualiza automaticamente a cada 2 minutos. Não é necessário fazer múltiplas requisições.", // 🆕 Dica útil
       });
     }
 
@@ -64,12 +77,12 @@ exports.getMatchDetails = async (req, res) => {
   try {
     const { matchId } = req.params;
 
-    // 🆕 Rate limiting
+    // Rate limiting
     const requestKey = `${req.ip}_match_${matchId}`;
     const lastRequest = requestCache.get(requestKey);
     const now = Date.now();
 
-    if (lastRequest && now - lastRequest < 3000) {
+    if (lastRequest && now - lastRequest < 5000) {
       return res.status(429).json({
         success: false,
         message: "Muitas requisições. Aguarde alguns segundos.",
@@ -101,16 +114,17 @@ exports.getTeamsByLeague = async (req, res) => {
   try {
     const { league } = req.params;
 
-    // 🆕 Rate limiting
+    // Rate limiting (15 segundos para teams - operação mais pesada)
     const requestKey = `${req.ip}_teams_${league}`;
     const lastRequest = requestCache.get(requestKey);
     const now = Date.now();
 
-    if (lastRequest && now - lastRequest < 10000) {
-      // 10 segundos para teams
+    if (lastRequest && now - lastRequest < 15000) {
+      const waitTime = Math.ceil((15000 - (now - lastRequest)) / 1000);
       return res.status(429).json({
         success: false,
-        message: "Muitas requisições. Aguarde alguns segundos.",
+        message: `Muitas requisições. Aguarde ${waitTime} segundos.`,
+        retryAfter: waitTime,
       });
     }
 
@@ -263,9 +277,14 @@ exports.getCheckerStatus = async (req, res) => {
       success: true,
       data: {
         isActive: true,
-        checkInterval: "2 horas", // 🆕 Atualizado
+        checkInterval: "2 horas",
         activeRooms,
         lastCheck: new Date().toISOString(),
+        rateLimits: {
+          minRequestInterval: `${MIN_REQUEST_INTERVAL / 1000}s`,
+          cacheCleanInterval: "5 minutos",
+          currentCachedRequests: requestCache.size,
+        },
       },
     });
   } catch (error) {

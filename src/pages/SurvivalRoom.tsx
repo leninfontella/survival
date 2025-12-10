@@ -16,12 +16,13 @@ import {
   Loader2,
   Clock,
   CheckCircle2,
+  History,
+  RefreshCw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { roomAPI, authAPI } from "@/services/api";
 import heroBg from "@/assets/hero-bg.jpg";
-import { History, RefreshCw } from "lucide-react";
 import { RoundHistory } from "@/components/RoundHistory";
 import { MatchResultIndicator } from "@/components/MatchResultIndicator";
 import { useActiveSurvivorRoom } from "@/hooks/useMatchResults";
@@ -38,7 +39,7 @@ interface RoomData {
     _id: string;
     name: string;
     isEliminated: boolean;
-    eliminationRound?: number; // 🆕 NOVO
+    eliminationRound?: number;
     user?:
       | {
           _id: string;
@@ -52,7 +53,6 @@ interface RoomData {
       won: boolean | null;
       selectedAt?: string;
       matchResult?: {
-        // 🆕 NOVO
         homeTeam: string;
         awayTeam: string;
         homeScore: number;
@@ -142,7 +142,10 @@ export default function SurvivalRoom() {
     navigate(`/room/select-team/${roomId}`);
   }, [roomId, navigate]);
 
-  // Buscar dados da sala
+  /**
+   * 🔥 FIX: Buscar dados da sala SEM POLLING
+   * Apenas busca ao montar e quando usuário faz ação manual
+   */
   useEffect(() => {
     if (!roomId) {
       toast({
@@ -158,7 +161,6 @@ export default function SurvivalRoom() {
       try {
         const response = await roomAPI.getById(roomId);
         if (response.success && isMountedRef.current) {
-          // Verificar se precisa de convite
           if (response.needsInvite) {
             toast({
               title: "Sala Privada",
@@ -189,19 +191,11 @@ export default function SurvivalRoom() {
       }
     };
 
-    // Buscar inicialmente
+    // 🔥 FIX: Buscar APENAS UMA VEZ ao montar
     fetchRoom();
-
-    // Polling para atualizar dados a cada 5 segundos
-    const interval = setInterval(() => {
-      if (isMountedRef.current) {
-        fetchRoom();
-      }
-    }, 120000);
 
     return () => {
       isMountedRef.current = false;
-      clearInterval(interval);
     };
   }, [roomId, navigate]);
 
@@ -248,7 +242,6 @@ export default function SurvivalRoom() {
   const activePlayers = roomData.players.filter((p) => !p.isEliminated);
   const eliminatedPlayers = roomData.players.filter((p) => p.isEliminated);
 
-  // Filtrar jogadores com base na rodada atual
   const playersWithSelection = activePlayers.filter((p) => {
     if (!p.selectedTeams || p.selectedTeams.length === 0) return false;
     return p.selectedTeams.some((s) => s.round === roomData.currentRound);
@@ -259,7 +252,6 @@ export default function SurvivalRoom() {
     return !p.selectedTeams.some((s) => s.round === roomData.currentRound);
   });
 
-  // Seleção atual do jogador
   const currentSelection = currentPlayer?.selectedTeams.find(
     (s) => s.round === roomData.currentRound
   );
@@ -268,7 +260,6 @@ export default function SurvivalRoom() {
     roomData.status === "finished" || activePlayers.length === 1;
   const winner = activePlayers.length === 1 ? activePlayers[0] : null;
 
-  // Verificar se o usuário atual precisa selecionar time
   const currentUserPlayer = activePlayers.find((p) => isCurrentUser(p));
   const currentUserNeedsSelection =
     currentPlayer &&
@@ -312,7 +303,6 @@ export default function SurvivalRoom() {
             </Button>
           </Link>
 
-          {/* Botões de ação - 🆕 NOVO */}
           <div className="flex gap-2">
             {currentPlayer && (
               <Button
@@ -377,7 +367,7 @@ export default function SurvivalRoom() {
             </Card>
           </motion.div>
 
-          {/* Status da Rodada - 🆕 NOVO */}
+          {/* Status da Rodada */}
           {matchResults.stats.total > 0 && roomData.status === "active" && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -414,7 +404,6 @@ export default function SurvivalRoom() {
                     </div>
                   </div>
 
-                  {/* Barra de progresso */}
                   <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <motion.div
                       className="bg-blue-500 h-2 rounded-full"
@@ -430,7 +419,7 @@ export default function SurvivalRoom() {
             </motion.div>
           )}
 
-          {/* Resultado do Jogador Atual - 🆕 NOVO */}
+          {/* Resultado do Jogador Atual */}
           {currentSelection && roomData.status === "active" && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -451,7 +440,7 @@ export default function SurvivalRoom() {
             </motion.div>
           )}
 
-          {/* Call to Action - Se o usuário precisa selecionar */}
+          {/* Call to Action */}
           <AnimatePresence>
             {currentUserNeedsSelection && (
               <motion.div
@@ -503,7 +492,7 @@ export default function SurvivalRoom() {
             )}
           </AnimatePresence>
 
-          {/* Histórico de Rodadas - 🆕 NOVO */}
+          {/* Histórico de Rodadas */}
           <AnimatePresence>
             {showHistory && currentPlayer && (
               <RoundHistory

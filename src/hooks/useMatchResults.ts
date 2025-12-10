@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getMatchesByRound,
-  getTeamMatchInRound,
-  checkRoundCompleted,
-  getRoundStats,
   Match,
   didTeamWin,
 } from "../services/matchResults.api";
@@ -14,14 +11,14 @@ interface UseMatchResultsOptions {
   currentRound: number;
   selectedTeamId?: string;
   autoRefresh?: boolean;
-  refreshInterval?: number; // em milissegundos
+  refreshInterval?: number;
 }
 
 interface MatchResultsState {
   matches: Match[];
   teamMatch: Match | null;
   isRoundComplete: boolean;
-  teamResult: boolean | null; // true = won, false = lost, null = pending
+  teamResult: boolean | null;
   loading: boolean;
   error: string | null;
   stats: {
@@ -41,7 +38,7 @@ export const useMatchResults = ({
   currentRound,
   selectedTeamId,
   autoRefresh = true,
-  refreshInterval = 60000, // 1 minuto por padrão
+  refreshInterval = 120000, // 2 minutos
 }: UseMatchResultsOptions) => {
   const [state, setState] = useState<MatchResultsState>({
     matches: [],
@@ -59,8 +56,9 @@ export const useMatchResults = ({
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const emptyCountRef = useRef(0); // 🆕 Contador de tentativas vazias
-  const isMountedRef = useRef(true); // 🆕 Controle de montagem
+  const emptyCountRef = useRef(0);
+  const isMountedRef = useRef(true);
+  const lastFetchRef = useRef<number>(0); // 🆕 Timestamp da última busca
 
   /**
    * Busca dados da rodada atual
@@ -68,13 +66,19 @@ export const useMatchResults = ({
   const fetchMatchResults = useCallback(async () => {
     if (!isMountedRef.current) return;
 
+    // 🆕 Evitar múltiplas chamadas em sequência (debounce)
+    const now = Date.now();
+    if (now - lastFetchRef.current < 5000) {
+      console.log("⏭️ Pulando fetch - última busca foi há menos de 5s");
+      return;
+    }
+    lastFetchRef.current = now;
+
     try {
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
-      // 🆕 Buscar partidas UMA VEZ
       const matches = await getMatchesByRound(league, currentRound);
 
-      // Verificar se há partidas
       if (matches.length === 0) {
         emptyCountRef.current++;
         console.log(
@@ -109,7 +113,6 @@ export const useMatchResults = ({
           return;
         }
 
-        // 🆕 Retornar estado vazio sem fazer mais chamadas
         if (!isMountedRef.current) return;
 
         setState({
@@ -133,12 +136,11 @@ export const useMatchResults = ({
       // Reset contador se encontrou partidas
       emptyCountRef.current = 0;
 
-      // 🆕 Calcular tudo localmente a partir das partidas já obtidas
+      // Calcular tudo localmente
       let teamMatch: Match | null = null;
       let teamResult: boolean | null = null;
 
       if (selectedTeamId) {
-        // Encontrar partida do time nas partidas já obtidas
         teamMatch =
           matches.find(
             (m) =>
@@ -150,14 +152,12 @@ export const useMatchResults = ({
         }
       }
 
-      // 🆕 Verificar se rodada está completa (localmente)
       const isRoundComplete = matches.every(
         (match) =>
           match.status === "Match Finished" ||
           (match.homeScore !== null && match.awayScore !== null)
       );
 
-      // 🆕 Calcular estatísticas (localmente)
       const total = matches.length;
       const finished = matches.filter(
         (match) =>
@@ -201,18 +201,21 @@ export const useMatchResults = ({
 
   /**
    * Configurar auto-refresh
+   * 🔥 FIX: Removido fetchMatchResults das dependencies para evitar loop
    */
   useEffect(() => {
     isMountedRef.current = true;
-    emptyCountRef.current = 0; // Reset contador
+    emptyCountRef.current = 0;
+    lastFetchRef.current = 0; // Reset timestamp
 
     // Buscar dados inicialmente
     fetchMatchResults();
 
     // Configurar polling se auto-refresh estiver habilitado
     if (autoRefresh) {
+      console.log(`▶️ Polling iniciado: ${refreshInterval}ms`);
+
       intervalRef.current = setInterval(() => {
-        // 🆕 Não fazer polling se já tentou 3 vezes sem sucesso
         if (emptyCountRef.current >= 3) {
           console.log("⏹️ Polling já foi parado");
           return;
@@ -224,6 +227,7 @@ export const useMatchResults = ({
 
     // Cleanup
     return () => {
+      console.log("🧹 Cleanup useMatchResults");
       isMountedRef.current = false;
 
       if (intervalRef.current) {
@@ -231,13 +235,14 @@ export const useMatchResults = ({
         intervalRef.current = null;
       }
     };
-  }, [fetchMatchResults, autoRefresh, refreshInterval]);
+  }, [autoRefresh, refreshInterval, league, currentRound]); // 🔥 FIX: SEM fetchMatchResults
 
   /**
    * Forçar atualização manual
    */
   const refresh = useCallback(() => {
-    emptyCountRef.current = 0; // 🆕 Reset contador ao forçar refresh
+    emptyCountRef.current = 0;
+    lastFetchRef.current = 0; // Reset timestamp para permitir fetch imediato
     fetchMatchResults();
   }, [fetchMatchResults]);
 
@@ -257,7 +262,8 @@ export const useMatchResults = ({
    */
   const startAutoRefresh = useCallback(() => {
     if (!intervalRef.current && autoRefresh && isMountedRef.current) {
-      emptyCountRef.current = 0; // 🆕 Reset contador ao retomar
+      emptyCountRef.current = 0;
+      lastFetchRef.current = 0;
 
       intervalRef.current = setInterval(() => {
         if (emptyCountRef.current >= 3) {
@@ -280,100 +286,8 @@ export const useMatchResults = ({
 };
 
 /**
- * Hook simplificado para verificar apenas o status da rodada
- */
-export const useRoundStatus = (
-  league: string,
-  round: number,
-  autoRefresh = true,
-  refreshInterval = 60000
-) => {
-  const [isComplete, setIsComplete] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isMountedRef = useRef(true);
-
-  const checkStatus = useCallback(async () => {
-    if (!isMountedRef.current) return;
-
-    try {
-      setLoading(true);
-      const complete = await checkRoundCompleted(league, round);
-
-      if (isMountedRef.current) {
-        setIsComplete(complete);
-      }
-    } catch (error) {
-      console.error("Erro ao verificar status da rodada:", error);
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [league, round]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-
-    checkStatus();
-
-    if (autoRefresh && !isComplete) {
-      intervalRef.current = setInterval(checkStatus, refreshInterval);
-    }
-
-    return () => {
-      isMountedRef.current = false;
-
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [checkStatus, autoRefresh, refreshInterval, isComplete]);
-
-  return { isComplete, loading, refresh: checkStatus };
-};
-
-/**
- * Hook para monitorar mudanças de rodada
- */
-export const useRoundChangeDetector = (
-  currentRound: number,
-  onRoundChange: (newRound: number) => void
-) => {
-  const previousRoundRef = useRef(currentRound);
-
-  useEffect(() => {
-    if (currentRound !== previousRoundRef.current) {
-      console.log(
-        `🔄 Mudança de rodada detectada: ${previousRoundRef.current} → ${currentRound}`
-      );
-      onRoundChange(currentRound);
-      previousRoundRef.current = currentRound;
-    }
-  }, [currentRound, onRoundChange]);
-};
-
-/**
- * Hook para verificar se o jogador foi eliminado
- */
-export const useEliminationDetector = (
-  isEliminated: boolean,
-  onEliminated: () => void
-) => {
-  const wasEliminatedRef = useRef(isEliminated);
-
-  useEffect(() => {
-    if (isEliminated && !wasEliminatedRef.current) {
-      console.log("❌ Eliminação detectada!");
-      onEliminated();
-      wasEliminatedRef.current = true;
-    }
-  }, [isEliminated, onEliminated]);
-};
-
-/**
- * Hook completo para gerenciar sala ativa com todas as features
+ * Hook completo para gerenciar sala ativa
+ * 🔥 FIX: refreshInterval aumentado para 2 minutos
  */
 export const useActiveSurvivorRoom = ({
   roomId,
@@ -392,30 +306,41 @@ export const useActiveSurvivorRoom = ({
   onRoundComplete?: () => void;
   onEliminated?: () => void;
 }) => {
+  const previousRoundRef = useRef(currentRound);
+  const wasEliminatedRef = useRef(isEliminated);
+
   // Resultados das partidas
   const matchResults = useMatchResults({
     roomId,
     league,
     currentRound,
     selectedTeamId,
-    autoRefresh: !isEliminated, // 🆕 Para de atualizar se eliminado
-    refreshInterval: 120000, // 🆕 2 minutos (aumentado de 1)
+    autoRefresh: !isEliminated,
+    refreshInterval: 120000, // 2 minutos
   });
 
   // Detectar mudança de rodada
-  useRoundChangeDetector(currentRound, () => {
-    console.log("🔄 Nova rodada detectada:", currentRound);
-    matchResults.refresh();
-  });
+  useEffect(() => {
+    if (currentRound !== previousRoundRef.current) {
+      console.log(
+        `🔄 Mudança de rodada: ${previousRoundRef.current} → ${currentRound}`
+      );
+      matchResults.refresh();
+      previousRoundRef.current = currentRound;
+    }
+  }, [currentRound, matchResults]);
 
   // Detectar eliminação
-  useEliminationDetector(isEliminated, () => {
-    console.log("❌ Jogador eliminado - parando polling!");
-    matchResults.stopAutoRefresh();
-    if (onEliminated) {
-      onEliminated();
+  useEffect(() => {
+    if (isEliminated && !wasEliminatedRef.current) {
+      console.log("❌ Eliminação detectada - parando polling!");
+      matchResults.stopAutoRefresh();
+      if (onEliminated) {
+        onEliminated();
+      }
+      wasEliminatedRef.current = true;
     }
-  });
+  }, [isEliminated, matchResults, onEliminated]);
 
   // Detectar conclusão da rodada
   useEffect(() => {
@@ -427,7 +352,6 @@ export const useActiveSurvivorRoom = ({
 
   return {
     ...matchResults,
-    // Flags úteis
     hasTeamResult: matchResults.teamResult !== null,
     isWinner: matchResults.teamResult === true,
     isLoser: matchResults.teamResult === false,
