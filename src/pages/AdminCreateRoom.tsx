@@ -19,12 +19,13 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Lock, Unlock } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Unlock, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { League } from "@/types/game";
 import { roomAPI } from "@/services/api";
 import { Navbar } from "@/components/Navbar";
 
+// 🔥 FIX: Dados corretos das ligas com rodadas FIXAS
 const leagueOptions = [
   { value: "brasil" as League, label: "🇧🇷 Brasileirão", rounds: 38 },
   { value: "espanha" as League, label: "🇪🇸 La Liga (Espanha)", rounds: 38 },
@@ -49,23 +50,46 @@ export default function AdminCreateRoom() {
     league: "brasil" as League,
     minPlayers: 10,
     entryPrice: 50,
-    totalRounds: 38,
+    totalRounds: 38, // Será atualizado automaticamente
     isPrivate: false,
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  // 🔥 FIX: Atualizar totalRounds automaticamente ao mudar a liga
   const handleLeagueChange = (league: League) => {
+    const selectedLeague = leagueOptions.find((l) => l.value === league);
+
     setFormData({
       ...formData,
       league,
+      totalRounds: selectedLeague?.rounds || 38, // 🔥 ATUALIZA AUTOMATICAMENTE
     });
   };
 
+  // 🔥 FIX: Validar totalRounds antes de enviar
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // Validar se totalRounds está correto para a liga
+      const selectedLeague = leagueOptions.find(
+        (l) => l.value === formData.league
+      );
+      const maxRounds = selectedLeague?.rounds || 38;
+
+      if (formData.totalRounds > maxRounds) {
+        toast({
+          title: "Número de rodadas inválido",
+          description: `${selectedLeague?.label} tem apenas ${maxRounds} rodadas. Ajustando automaticamente.`,
+          variant: "destructive",
+        });
+
+        setFormData({ ...formData, totalRounds: maxRounds });
+        setIsLoading(false);
+        return;
+      }
+
       const response = await roomAPI.create({
         name: formData.name,
         league: formData.league,
@@ -85,7 +109,6 @@ export default function AdminCreateRoom() {
             : "Sala pública criada. Todos podem ver e entrar.",
         });
 
-        // Redireciona para JoinRoom como admin/criador
         navigate(`/join-room/${roomId}`);
       }
     } catch (error) {
@@ -103,6 +126,10 @@ export default function AdminCreateRoom() {
       setIsLoading(false);
     }
   };
+
+  // 🆕 Obter rodadas máximas da liga selecionada
+  const selectedLeague = leagueOptions.find((l) => l.value === formData.league);
+  const maxRounds = selectedLeague?.rounds || 38;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
@@ -161,6 +188,7 @@ export default function AdminCreateRoom() {
                 </div>
               </div>
 
+              {/* Liga */}
               <div className="space-y-2">
                 <Label htmlFor="league">Liga / Campeonato</Label>
                 <Select
@@ -174,13 +202,18 @@ export default function AdminCreateRoom() {
                   <SelectContent>
                     {leagueOptions.map((league) => (
                       <SelectItem key={league.value} value={league.value}>
-                        {league.label}
+                        {league.label} • {league.rounds} rodadas
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="h-3 w-3" />
+                  Esta liga tem {maxRounds} rodadas no campeonato real
+                </p>
               </div>
 
+              {/* Nome da Sala */}
               <div className="space-y-2">
                 <Label htmlFor="name">Nome da Sala</Label>
                 <Input
@@ -195,7 +228,9 @@ export default function AdminCreateRoom() {
                 />
               </div>
 
+              {/* Grid de Configurações */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Jogadores Mínimos */}
                 <div className="space-y-2">
                   <Label htmlFor="minPlayers">Jogadores Mínimos</Label>
                   <Input
@@ -214,6 +249,7 @@ export default function AdminCreateRoom() {
                   />
                 </div>
 
+                {/* Valor de Entrada */}
                 <div className="space-y-2">
                   <Label htmlFor="entryPrice">Valor de Entrada (R$)</Label>
                   <Input
@@ -236,27 +272,44 @@ export default function AdminCreateRoom() {
                 </div>
               </div>
 
+              {/* 🔥 FIX: Total de Rodadas - AUTOMÁTICO ou com limite */}
               <div className="space-y-2">
                 <Label htmlFor="totalRounds">Total de Rodadas</Label>
                 <Input
                   id="totalRounds"
                   type="number"
                   min="1"
+                  max={maxRounds} // 🔥 LIMITAR ao máximo da liga
                   value={formData.totalRounds}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      totalRounds: parseInt(e.target.value),
-                    })
-                  }
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    // 🔥 Validar se não excede o máximo
+                    if (value <= maxRounds) {
+                      setFormData({
+                        ...formData,
+                        totalRounds: value,
+                      });
+                    } else {
+                      toast({
+                        title: "Limite excedido",
+                        description: `${selectedLeague?.label} tem apenas ${maxRounds} rodadas`,
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                   required
                   disabled={isLoading}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Defina o número de rodadas da competição
-                </p>
+                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <p>
+                    Defina quantas rodadas serão jogadas (máximo: {maxRounds}{" "}
+                    rodadas da {selectedLeague?.label})
+                  </p>
+                </div>
               </div>
 
+              {/* Resumo */}
               <div className="pt-4 space-y-4">
                 <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                   <h4 className="font-semibold text-primary mb-2">Resumo</h4>
@@ -285,14 +338,20 @@ export default function AdminCreateRoom() {
                           ?.label
                       }
                     </p>
-                    <p>• Entrada: R$ {formData.entryPrice}</p>
+                    <p>• Entrada: R$ {formData.entryPrice.toFixed(2)}</p>
                     <p>• Mínimo: {formData.minPlayers} jogadores</p>
-                    <p>• Duração: {formData.totalRounds} rodadas</p>
+                    <p>
+                      • Duração: {formData.totalRounds} de {maxRounds} rodadas
+                      disponíveis
+                    </p>
                     <p>
                       • Prêmio inicial: R${" "}
                       {(
                         formData.minPlayers * formData.entryPrice
-                      ).toLocaleString()}
+                      ).toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </p>
                   </div>
                 </div>
