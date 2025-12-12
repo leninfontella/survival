@@ -3,7 +3,6 @@ import {
   Calendar,
   Trophy,
   TrendingUp,
-  CheckCircle,
   XCircle,
   Clock,
   ChevronDown,
@@ -50,28 +49,88 @@ export const RoundHistory: React.FC<RoundHistoryProps> = ({
   const toggleRound = (round: number) => {
     setExpandedRounds((prev) => {
       const newSet = new Set(prev);
-
-      // FIX ESLINT
-      if (newSet.has(round)) newSet.delete(round);
-      else newSet.add(round);
-
+      if (newSet.has(round)) {
+        newSet.delete(round);
+      } else {
+        newSet.add(round);
+      }
       return newSet;
     });
   };
 
-  const stats = {
-    total: selections.length,
-    wins: selections.filter((s) => s.won === true).length,
-    losses: selections.filter((s) => s.won === false).length,
-    pending: selections.filter((s) => s.won === null).length,
+  // 🔥 FIX: Validar seleções e filtrar inválidas
+  const validSelections = React.useMemo(() => {
+    return selections.filter((s) => {
+      // Validar campos obrigatórios
+      if (!s.teamId || !s.teamName || !s.round) {
+        console.warn("⚠️ Seleção inválida detectada:", s);
+        return false;
+      }
+      return true;
+    });
+  }, [selections]);
+
+  // 🔥 FIX: Calcular estatísticas apenas de seleções válidas
+  const stats = React.useMemo(() => {
+    return {
+      total: validSelections.length,
+      wins: validSelections.filter((s) => s.won === true).length,
+      losses: validSelections.filter((s) => s.won === false).length,
+      pending: validSelections.filter((s) => s.won === null).length,
+    };
+  }, [validSelections]);
+
+  // 🔥 FIX: Determinar quais rodadas devem ser exibidas
+  const roundsToShow = React.useMemo(() => {
+    // Rodadas com seleções
+    const roundsWithSelections = validSelections.map((s) => s.round);
+
+    // Adicionar rodada atual se não estiver na lista
+    if (!roundsWithSelections.includes(currentRound)) {
+      roundsWithSelections.push(currentRound);
+    }
+
+    // Remover duplicatas e ordenar
+    const uniqueRounds = Array.from(new Set(roundsWithSelections)).sort(
+      (a, b) => a - b
+    );
+
+    // Limitar ao totalRounds
+    return uniqueRounds.filter((r) => r <= totalRounds);
+  }, [validSelections, currentRound, totalRounds]);
+
+  // 🔥 FIX: Formatar data com segurança
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) return "Data não disponível";
+
+    try {
+      const date = new Date(dateString);
+
+      // Verificar se a data é válida
+      if (isNaN(date.getTime())) {
+        return "Data inválida";
+      }
+
+      return date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return "Data inválida";
+    }
   };
 
   const renderRound = (round: number) => {
-    const selection = selections.find((s) => s.round === round);
+    const selection = validSelections.find((s) => s.round === round);
     const isExpanded = expandedRounds.has(round);
     const isCurrent = round === currentRound;
     const isFuture = round > currentRound;
 
+    // 🔥 FIX: Estilo do card baseado no estado
     let cardStyle =
       "bg-black/60 backdrop-blur-lg border border-white/10 shadow-xl shadow-black/60";
 
@@ -118,14 +177,16 @@ export const RoundHistory: React.FC<RoundHistoryProps> = ({
                 )}
               </div>
 
-              {selection && (
+              {selection ? (
                 <div className="text-sm text-gray-400">
                   {selection.teamName}
                 </div>
-              )}
-
-              {!selection && isFuture && (
+              ) : isFuture ? (
                 <div className="text-sm text-gray-500">Ainda não disputada</div>
+              ) : (
+                <div className="text-sm text-yellow-500">
+                  Aguardando seleção
+                </div>
               )}
             </div>
           </div>
@@ -141,8 +202,10 @@ export const RoundHistory: React.FC<RoundHistoryProps> = ({
           </div>
         </button>
 
+        {/* 🔥 FIX: Só expandir se tiver seleção */}
         {isExpanded && selection && (
           <div className="px-4 pb-4 border-t border-white/10">
+            {/* Time escolhido */}
             <div className="mt-3 flex items-center gap-2">
               <Trophy size={16} className="text-primary" />
               <span className="text-sm text-gray-400">Time escolhido:</span>
@@ -151,20 +214,15 @@ export const RoundHistory: React.FC<RoundHistoryProps> = ({
               </span>
             </div>
 
+            {/* Data de seleção */}
             <div className="mt-2 flex items-center gap-2">
               <Calendar size={16} className="text-gray-500" />
               <span className="text-xs text-gray-500">
-                Selecionado em{" "}
-                {new Date(selection.selectedAt).toLocaleDateString("pt-BR", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                Selecionado em {formatDate(selection.selectedAt)}
               </span>
             </div>
 
+            {/* Resultado da partida */}
             {selection.matchResult ? (
               <div className="mt-3 bg-black/50 backdrop-blur-xl rounded-lg p-3 border border-white/10 shadow-inner shadow-black/60">
                 <div className="flex items-center justify-between mb-2">
@@ -206,6 +264,16 @@ export const RoundHistory: React.FC<RoundHistoryProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Data de verificação */}
+                {selection.matchResult.verifiedAt && (
+                  <div className="mt-2 text-center">
+                    <span className="text-xs text-gray-500">
+                      Verificado em{" "}
+                      {formatDate(selection.matchResult.verifiedAt)}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="mt-3 bg-black/40 backdrop-blur-xl rounded-lg p-3 flex items-center justify-center gap-2 border border-white/10">
@@ -217,12 +285,25 @@ export const RoundHistory: React.FC<RoundHistoryProps> = ({
             )}
           </div>
         )}
+
+        {/* 🔥 FIX: Mensagem quando não há seleção mas rodada está ativa */}
+        {isExpanded && !selection && isCurrent && (
+          <div className="px-4 pb-4 border-t border-white/10">
+            <div className="mt-3 bg-yellow-500/10 backdrop-blur-xl rounded-lg p-3 flex items-center justify-center gap-2 border border-yellow-500/30">
+              <Clock size={16} className="text-yellow-500" />
+              <span className="text-sm text-yellow-500">
+                Você ainda não selecionou um time para esta rodada
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <div className={`space-y-4 ${className}`}>
+      {/* Card de estatísticas */}
       <div className="bg-black/70 border border-white/10 rounded-xl p-4 backdrop-blur-xl shadow-xl shadow-black/60">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -263,6 +344,7 @@ export const RoundHistory: React.FC<RoundHistoryProps> = ({
           </div>
         </div>
 
+        {/* 🔥 FIX: Mensagem de eliminação */}
         {isEliminated && eliminationRound && (
           <div className="mt-3 p-3 bg-red-900/40 border border-red-600/40 rounded-lg backdrop-blur-xl shadow-inner shadow-red-900/20">
             <div className="flex items-center gap-2 text-red-400">
@@ -275,20 +357,40 @@ export const RoundHistory: React.FC<RoundHistoryProps> = ({
         )}
       </div>
 
+      {/* Lista de rodadas */}
       <div className="space-y-2">
-        {Array.from({ length: totalRounds }, (_, i) => i + 1).map((round) =>
-          renderRound(round)
+        {roundsToShow.length > 0 ? (
+          roundsToShow.map((round) => renderRound(round))
+        ) : (
+          <div className="bg-black/70 border border-white/10 rounded-lg p-8 text-center backdrop-blur-xl shadow-xl shadow-black/60">
+            <Clock size={48} className="mx-auto text-gray-500 mb-3" />
+            <p className="text-gray-300">Nenhuma rodada jogada ainda</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Aguardando o início do jogo
+            </p>
+          </div>
         )}
       </div>
 
-      {selections.length === 0 && (
-        <div className="bg-black/70 border border-white/10 rounded-lg p-8 text-center backdrop-blur-xl shadow-xl shadow-black/60">
-          <Clock size={48} className="mx-auto text-gray-500 mb-3" />
-          <p className="text-gray-300">Nenhuma seleção realizada ainda</p>
-          <p className="text-sm text-gray-500 mt-1">
-            Aguardando o início do jogo
-          </p>
-        </div>
+      {/* 🔥 FIX: Debug info (remover em produção) */}
+      {process.env.NODE_ENV === "development" && (
+        <details className="bg-black/50 border border-white/10 rounded-lg p-4 text-xs text-gray-400">
+          <summary className="cursor-pointer">Debug Info</summary>
+          <pre className="mt-2 overflow-auto">
+            {JSON.stringify(
+              {
+                totalSelections: selections.length,
+                validSelections: validSelections.length,
+                currentRound,
+                totalRounds,
+                roundsToShow,
+                stats,
+              },
+              null,
+              2
+            )}
+          </pre>
+        </details>
       )}
     </div>
   );

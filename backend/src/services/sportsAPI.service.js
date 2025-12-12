@@ -303,6 +303,81 @@ class SportsAPIService {
       throw error;
     }
   }
+
+  /**
+   * Busca logo de um time específico
+   */
+  async getTeamLogo(teamId) {
+    try {
+      const apiCache = require("../utils/apiCache");
+
+      // Verificar cache primeiro
+      const cacheKey = apiCache.generateKey("team-logo", { teamId });
+      const cachedLogo = apiCache.get(cacheKey, 86400000); // 24 horas
+
+      if (cachedLogo) {
+        return cachedLogo;
+      }
+
+      const url = `${BASE_URL}/${THESPORTSDB_API_KEY}/lookupteam.php?id=${teamId}`;
+
+      const response = await axios.get(url);
+
+      if (!response.data || !response.data.teams || !response.data.teams[0]) {
+        console.log(`⚠️ Logo não encontrado para time ${teamId}`);
+        return null;
+      }
+
+      const logo =
+        response.data.teams[0].strTeamBadge ||
+        response.data.teams[0].strTeamLogo;
+
+      // Cachear
+      apiCache.set(cacheKey, logo);
+
+      return logo;
+    } catch (error) {
+      console.error(`❌ Erro ao buscar logo do time ${teamId}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Busca logos para múltiplos times de uma vez
+   */
+  async getTeamLogos(teamIds) {
+    try {
+      const logos = {};
+
+      // Buscar em paralelo (mas com limite de 5 simultâneas)
+      const chunks = [];
+      for (let i = 0; i < teamIds.length; i += 5) {
+        chunks.push(teamIds.slice(i, i + 5));
+      }
+
+      for (const chunk of chunks) {
+        const promises = chunk.map(async (teamId) => {
+          const logo = await this.getTeamLogo(teamId);
+          return { teamId, logo };
+        });
+
+        const results = await Promise.all(promises);
+        results.forEach(({ teamId, logo }) => {
+          logos[teamId] = logo;
+        });
+
+        // Delay entre chunks para evitar rate limit
+        if (chunks.length > 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+      return logos;
+    } catch (error) {
+      console.error("❌ Erro ao buscar logos dos times:", error.message);
+      return {};
+    }
+  }
 }
 
 module.exports = new SportsAPIService();

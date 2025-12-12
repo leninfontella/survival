@@ -161,6 +161,52 @@ export interface MatchResultsState {
   stats: RoundStats;
 }
 
+// 🆕 ADICIONAR ESTAS INTERFACES NO FINAL DO ARQUIVO
+
+// Interface para partida da API com disponibilidade
+export interface AvailableMatch {
+  id: string;
+  homeTeam: {
+    id: string;
+    name: string;
+    canSelect: boolean;
+    used: boolean;
+  };
+  awayTeam: {
+    id: string;
+    name: string;
+    canSelect: boolean;
+    used: boolean;
+  };
+  date: string;
+  time: string;
+  status: string;
+  round: number;
+  season: string;
+  hasAvailableTeam: boolean; // Se pelo menos um time pode ser selecionado
+}
+
+// Resposta da API de partidas disponíveis
+export interface AvailableMatchesResponse {
+  success: boolean;
+  data: {
+    matches: AvailableMatch[];
+    round: number;
+    totalRounds: number;
+    usedTeams: string[];
+    league: string;
+    roomName: string;
+  };
+}
+
+// Interface para seleção com matchId
+export interface TeamSelection {
+  teamId: string;
+  teamName: string;
+  matchId?: string;
+  round: number;
+}
+
 // Tipos existentes mantidos para compatibilidade
 export type GameStatus = "waiting" | "active" | "finished";
 export type RoundStatus = "upcoming" | "selecting" | "playing" | "finished";

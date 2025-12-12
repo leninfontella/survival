@@ -12,6 +12,7 @@ import { roomAPI, authAPI } from "@/services/api";
 import { useGame } from "@/hooks/useGame";
 import { History } from "lucide-react";
 import { MatchResultBadge } from "@/components/MatchResultIndicator";
+import { AvailableMatch } from "@/types/game";
 
 type League =
   | "brasil"
@@ -63,6 +64,11 @@ export default function SelectTeam() {
   const [isSaving, setIsSaving] = useState(false);
   const [playerSelections, setPlayerSelections] = useState<Selection[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [availableMatches, setAvailableMatches] = useState<AvailableMatch[]>(
+    []
+  );
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(false);
 
   // Debug: Verificar roomId
   useEffect(() => {
@@ -72,10 +78,9 @@ export default function SelectTeam() {
     console.log("🎯 Total de times disponíveis:", teams.length);
   }, [roomId, teams]);
 
-  // Buscar dados da sala
+  // Buscar dados da sala E partidas disponíveis
   useEffect(() => {
-    const fetchRoom = async () => {
-      // Verificação mais robusta do roomId
+    const fetchRoomAndMatches = async () => {
       if (!roomId || roomId === "undefined" || roomId.trim() === "") {
         console.error("❌ RoomId inválido:", roomId);
         toast({
@@ -91,7 +96,7 @@ export default function SelectTeam() {
       try {
         console.log("🔍 Buscando sala com ID:", roomId);
 
-        // Buscar dados da sala
+        // 1️⃣ Buscar dados da sala
         const roomResponse = await roomAPI.getById(roomId);
         console.log("📦 Resposta da sala:", roomResponse);
 
@@ -100,22 +105,43 @@ export default function SelectTeam() {
           console.log("✅ Liga da sala:", roomResponse.data.league);
         }
 
-        // Buscar times já usados
-        const usedTeamsResponse = await roomAPI.getUsedTeams(roomId);
-        console.log("📦 Resposta times usados:", usedTeamsResponse);
+        // 2️⃣ 🆕 Buscar partidas disponíveis (ao invés de times usados)
+        setIsLoadingMatches(true);
+        try {
+          const matchesResponse = await roomAPI.getAvailableMatches(roomId);
+          console.log("⚽ Partidas disponíveis:", matchesResponse);
 
-        if (usedTeamsResponse.success) {
-          setUsedTeams(usedTeamsResponse.data.usedTeams);
-          console.log("✅ Times já usados:", usedTeamsResponse.data.usedTeams);
-
-          // 🆕 NOVO: Armazenar seleções com resultados
-          if (usedTeamsResponse.data.selections) {
-            setPlayerSelections(usedTeamsResponse.data.selections);
+          if (matchesResponse.success) {
+            setAvailableMatches(matchesResponse.data.matches);
+            setUsedTeams(matchesResponse.data.usedTeams);
             console.log(
-              "✅ Seleções anteriores:",
-              usedTeamsResponse.data.selections
+              `✅ ${matchesResponse.data.matches.length} partidas encontradas`
             );
           }
+        } catch (matchError: any) {
+          console.error("❌ Erro ao buscar partidas:", matchError);
+
+          // Se já selecionou, apenas mostrar warning
+          if (matchError.response?.data?.alreadySelected) {
+            toast({
+              title: "Time já selecionado",
+              description: "Você já escolheu seu time para esta rodada.",
+            });
+            setTimeout(() => navigate(`/survival-room/${roomId}`), 2000);
+            return;
+          }
+
+          // Fallback: buscar times usados (método antigo)
+          console.log("⚠️ Fallback: usando método antigo de times");
+          const usedTeamsResponse = await roomAPI.getUsedTeams(roomId);
+          if (usedTeamsResponse.success) {
+            setUsedTeams(usedTeamsResponse.data.usedTeams);
+            if (usedTeamsResponse.data.selections) {
+              setPlayerSelections(usedTeamsResponse.data.selections);
+            }
+          }
+        } finally {
+          setIsLoadingMatches(false);
         }
       } catch (error) {
         console.error("❌ Erro ao buscar sala:", error);
@@ -130,7 +156,7 @@ export default function SelectTeam() {
       }
     };
 
-    fetchRoom();
+    fetchRoomAndMatches();
   }, [roomId, navigate]);
 
   const handleConfirm = async () => {
@@ -145,22 +171,52 @@ export default function SelectTeam() {
 
     if (!roomId) return;
 
-    const selectedTeam = availableTeams.find((t) => t.id === selectedTeamId);
-    if (!selectedTeam) return;
+    // 🆕 Buscar nome do time selecionado
+    let selectedTeamName = "";
+
+    // Se temos partidas disponíveis, buscar da partida
+    if (availableMatches.length > 0) {
+      const match = availableMatches.find((m) =>
+        [m.homeTeam.id, m.awayTeam.id].includes(selectedTeamId)
+      );
+
+      if (match) {
+        selectedTeamName =
+          match.homeTeam.id === selectedTeamId
+            ? match.homeTeam.name
+            : match.awayTeam.name;
+      }
+    }
+
+    // Fallback: buscar do contexto de times (método antigo)
+    if (!selectedTeamName) {
+      const selectedTeam = availableTeams.find((t) => t.id === selectedTeamId);
+      if (!selectedTeam) {
+        toast({
+          title: "Erro",
+          description: "Time não encontrado.",
+          variant: "destructive",
+        });
+        return;
+      }
+      selectedTeamName = selectedTeam.name;
+    }
 
     setIsSaving(true);
     try {
       console.log("💾 Salvando seleção:", {
         roomId,
         teamId: selectedTeamId,
-        teamName: selectedTeam.name,
+        teamName: selectedTeamName,
+        matchId: selectedMatchId, // 🆕 ADICIONAR matchId
       });
 
-      // Chamar API para salvar a seleção do time
+      // 🆕 Chamar API com matchId
       const response = await roomAPI.selectTeam(
         roomId,
         selectedTeamId,
-        selectedTeam.name
+        selectedTeamName,
+        selectedMatchId || undefined // 🆕 Enviar matchId se disponível
       );
 
       if (response.success) {
@@ -207,6 +263,182 @@ export default function SelectTeam() {
   const selectedTeam = selectedTeamId
     ? availableTeams.find((t) => t.id === selectedTeamId)
     : null;
+
+  const renderMatchesGrid = () => {
+    if (isLoadingMatches) {
+      return (
+        <div className="text-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Carregando partidas...</p>
+        </div>
+      );
+    }
+
+    if (availableMatches.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">
+            Nenhuma partida disponível para esta rodada ainda.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Aguarde a divulgação dos jogos ou tente novamente mais tarde.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {availableMatches.map((match, index) => (
+          <motion.div
+            key={match.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+            className={`
+              relative p-6 rounded-xl border-2 transition-all duration-300
+              ${
+                !match.hasAvailableTeam
+                  ? "opacity-50 bg-muted/50"
+                  : "hover:shadow-lg"
+              }
+              ${
+                selectedMatchId === match.id
+                  ? "border-primary bg-primary/5"
+                  : "border-border/50"
+              }
+            `}
+          >
+            {/* Cabeçalho da partida */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>{match.date}</span>
+                <span>•</span>
+                <span>{match.time}</span>
+              </div>
+              {!match.hasAvailableTeam && (
+                <Badge variant="secondary">Ambos times já usados</Badge>
+              )}
+            </div>
+
+            {/* Grid de times */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+              {/* Time mandante */}
+              <motion.button
+                onClick={() => {
+                  if (match.homeTeam.canSelect) {
+                    setSelectedTeamId(match.homeTeam.id);
+                    setSelectedMatchId(match.id);
+                  }
+                }}
+                disabled={!match.homeTeam.canSelect}
+                whileHover={
+                  match.homeTeam.canSelect ? { scale: 1.02 } : undefined
+                }
+                whileTap={
+                  match.homeTeam.canSelect ? { scale: 0.98 } : undefined
+                }
+                className={`
+                  relative p-4 rounded-lg border-2 transition-all
+                  ${
+                    !match.homeTeam.canSelect
+                      ? "opacity-40 cursor-not-allowed bg-muted/30"
+                      : "cursor-pointer hover:border-primary/50"
+                  }
+                  ${
+                    selectedTeamId === match.homeTeam.id
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                      : "border-border/30"
+                  }
+                `}
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Casa
+                  </div>
+                  <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center p-2">
+                    <span className="text-2xl font-bold text-primary">
+                      {match.homeTeam.name.substring(0, 3).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="font-semibold text-center text-sm">
+                    {match.homeTeam.name}
+                  </span>
+                  {match.homeTeam.used && (
+                    <Badge variant="destructive" className="text-xs">
+                      Usado
+                    </Badge>
+                  )}
+                  {selectedTeamId === match.homeTeam.id && (
+                    <Check className="absolute top-2 right-2 h-5 w-5 text-primary" />
+                  )}
+                </div>
+              </motion.button>
+
+              {/* VS */}
+              <div className="text-center">
+                <span className="text-2xl font-bold text-muted-foreground">
+                  VS
+                </span>
+              </div>
+
+              {/* Time visitante */}
+              <motion.button
+                onClick={() => {
+                  if (match.awayTeam.canSelect) {
+                    setSelectedTeamId(match.awayTeam.id);
+                    setSelectedMatchId(match.id);
+                  }
+                }}
+                disabled={!match.awayTeam.canSelect}
+                whileHover={
+                  match.awayTeam.canSelect ? { scale: 1.02 } : undefined
+                }
+                whileTap={
+                  match.awayTeam.canSelect ? { scale: 0.98 } : undefined
+                }
+                className={`
+                  relative p-4 rounded-lg border-2 transition-all
+                  ${
+                    !match.awayTeam.canSelect
+                      ? "opacity-40 cursor-not-allowed bg-muted/30"
+                      : "cursor-pointer hover:border-primary/50"
+                  }
+                  ${
+                    selectedTeamId === match.awayTeam.id
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                      : "border-border/30"
+                  }
+                `}
+              >
+                <div className="flex flex-col items-center gap-3">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Visitante
+                  </div>
+                  <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center p-2">
+                    <span className="text-2xl font-bold text-primary">
+                      {match.awayTeam.name.substring(0, 3).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="font-semibold text-center text-sm">
+                    {match.awayTeam.name}
+                  </span>
+                  {match.awayTeam.used && (
+                    <Badge variant="destructive" className="text-xs">
+                      Usado
+                    </Badge>
+                  )}
+                  {selectedTeamId === match.awayTeam.id && (
+                    <Check className="absolute top-2 right-2 h-5 w-5 text-primary" />
+                  )}
+                </div>
+              </motion.button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -332,7 +564,6 @@ export default function SelectTeam() {
                 </CardHeader>
               </Card>
             </motion.div>
-
             {/* Teams Grid */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -344,161 +575,26 @@ export default function SelectTeam() {
                   <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-primary" />
                     <CardTitle className="text-xl">
-                      Times Disponíveis ({availableTeams.length})
+                      Partidas da Rodada ({availableMatches.length}){" "}
+                      {/* ✅ MUDOU */}
                     </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {availableTeams.map((team, index) => {
-                      const used = isTeamUsed(team.id);
-                      const selected = selectedTeamId === team.id;
+                  {/* ✅ SÓ ISSO AQUI AGORA */}
+                  {renderMatchesGrid()}
 
-                      return (
-                        <motion.button
-                          key={team.id}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: index * 0.02 }}
-                          whileHover={!used ? { scale: 1.05, y: -5 } : {}}
-                          whileTap={!used ? { scale: 0.98 } : {}}
-                          onClick={() => !used && setSelectedTeamId(team.id)}
-                          disabled={used}
-                          className={`
-                          relative p-5 rounded-xl border-2 transition-all duration-300 group overflow-hidden
-                          ${
-                            used
-                              ? "opacity-40 cursor-not-allowed bg-muted/50"
-                              : "cursor-pointer hover:shadow-xl hover:shadow-primary/20"
-                          }
-                          ${
-                            selected
-                              ? "border-primary bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-lg shadow-primary/30"
-                              : "border-border/50 bg-gradient-to-br from-card to-background/50 hover:border-primary/50"
-                          }
-                        `}
-                        >
-                          {selected && (
-                            <motion.div
-                              className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20"
-                              animate={{ opacity: [0.3, 0.6, 0.3] }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                            />
-                          )}
-
-                          <div className="relative flex flex-col items-center gap-4">
-                            <div
-                              className={`
-                            w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300
-                            ${
-                              selected
-                                ? "bg-primary/20 ring-4 ring-primary/30"
-                                : "bg-background/50 group-hover:bg-primary/10"
-                            }
-                          `}
-                            >
-                              <img
-                                src={team.logo}
-                                alt={team.name}
-                                className="w-14 h-14 object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "https://via.placeholder.com/56x56?text=" +
-                                    team.name.charAt(0);
-                                }}
-                              />
-                            </div>
-
-                            <span
-                              className={`
-                            font-bold text-center text-sm transition-colors
-                            ${
-                              selected
-                                ? "text-primary"
-                                : "text-foreground group-hover:text-primary"
-                            }
-                          `}
-                            >
-                              {team.name}
-                            </span>
-
-                            {used && (
-                              <Badge
-                                variant="destructive"
-                                className="absolute -top-2 -right-2 flex items-center gap-1 shadow-lg"
-                              >
-                                <X className="h-3 w-3" />
-                                Usado
-                              </Badge>
-                            )}
-
-                            {selected && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute -top-2 -right-2 flex items-center justify-center w-8 h-8 rounded-full bg-primary shadow-lg shadow-primary/50"
-                              >
-                                <Check className="h-5 w-5 text-primary-foreground" />
-                              </motion.div>
-                            )}
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Rules Card */}
+                  {/* Rules Card - MANTER COMO ESTÁ */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
                     className="mt-8 p-6 rounded-xl bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border-2 border-primary/20 shadow-lg"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 text-2xl">⚠️</div>
-                      <div>
-                        <h4 className="font-bold text-primary mb-3 text-lg">
-                          Regras Importantes:
-                        </h4>
-                        <ul className="space-y-2 text-sm">
-                          <li className="flex items-start gap-2">
-                            <span className="text-primary font-bold">•</span>
-                            <span>
-                              Você só pode escolher cada time{" "}
-                              <span className="text-primary font-bold">
-                                UMA VEZ
-                              </span>{" "}
-                              durante todo o campeonato
-                            </span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <span className="text-primary font-bold">•</span>
-                            <span>
-                              Se seu time{" "}
-                              <span className="text-primary font-bold">
-                                VENCER
-                              </span>
-                              , você avança para a próxima rodada
-                            </span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <span className="text-destructive font-bold">
-                              •
-                            </span>
-                            <span>
-                              Se seu time{" "}
-                              <span className="text-destructive font-bold">
-                                EMPATAR ou PERDER
-                              </span>
-                              , você é eliminado
-                            </span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
+                    {/* ... regras ... */}
                   </motion.div>
 
-                  {/* Confirm Button */}
+                  {/* Confirm Button - MANTER COMO ESTÁ */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -510,17 +606,7 @@ export default function SelectTeam() {
                       size="lg"
                       className="w-full mt-6 text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300"
                     >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                          Salvando...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="mr-2 h-6 w-6" />
-                          Confirmar Escolha
-                        </>
-                      )}
+                      {/* ... botão ... */}
                     </Button>
                   </motion.div>
                 </CardContent>

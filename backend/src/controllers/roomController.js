@@ -502,16 +502,19 @@ exports.startRoom = async (req, res) => {
   }
 };
 
-// @desc    Selecionar time para a rodada atual
-// @route   POST /api/rooms/:id/select-team
-// @access  Private
 exports.selectTeam = async (req, res) => {
   try {
-    const { teamId, teamName } = req.body;
+    const { teamId, teamName, matchId } = req.body; // 🆕 ADICIONAR matchId
     const roomId = req.params.id;
     const userId = req.user.id;
 
-    console.log("🎯 Selecionando time:", { roomId, userId, teamId, teamName });
+    console.log("🎯 Selecionando time:", {
+      roomId,
+      userId,
+      teamId,
+      teamName,
+      matchId, // 🆕 Log do matchId
+    });
 
     // Validações
     if (!teamId || !teamName) {
@@ -584,17 +587,52 @@ exports.selectTeam = async (req, res) => {
       });
     }
 
+    if (matchId) {
+      const sportsAPI = require("../services/sportsAPI.service");
+
+      try {
+        const match = await sportsAPI.getMatchDetails(matchId);
+
+        // Verificar se o time está nessa partida
+        const teamInMatch =
+          match.homeTeamId === teamId || match.awayTeamId === teamId;
+
+        if (!teamInMatch) {
+          return res.status(400).json({
+            success: false,
+            message: "O time selecionado não está nesta partida",
+          });
+        }
+
+        // Verificar se a partida é da rodada atual
+        if (match.round !== room.currentRound) {
+          return res.status(400).json({
+            success: false,
+            message: "Esta partida não é da rodada atual",
+          });
+        }
+
+        console.log(
+          `✅ Validação OK: ${teamName} está na partida ${matchId} da rodada ${room.currentRound}`
+        );
+      } catch (error) {
+        console.error("⚠️ Erro ao validar partida:", error);
+        // Continuar mesmo se falhar a validação
+      }
+    }
+
     // Adicionar seleção do time
     player.selectedTeams.push({
       teamId,
       teamName,
       round: room.currentRound,
       won: null,
+      matchId,
     });
 
     await player.save();
 
-    console.log("✅ Time selecionado com sucesso:", player.selectedTeams);
+    console.log("✅ Time selecionado com sucesso");
 
     // Buscar player atualizado
     const updatedPlayer = await Player.findById(player._id)
@@ -610,6 +648,7 @@ exports.selectTeam = async (req, res) => {
           teamId,
           teamName,
           round: room.currentRound,
+          matchId, // 🆕 ADICIONAR ESTE CAMPO
         },
       },
     });
@@ -727,6 +766,153 @@ exports.deleteRoom = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Erro ao excluir sala",
+      error: error.message,
+    });
+  }
+};
+
+exports.getAvailableMatches = async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const userId = req.user.id;
+
+    console.log("⚽ Buscando partidas disponíveis:", { roomId, userId });
+
+    // Buscar sala
+    const room = await Room.findById(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Sala não encontrada",
+      });
+    }
+
+    // Verificar se a sala está ativa
+    if (room.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "A sala não está ativa",
+      });
+    }
+
+    // Buscar jogador
+    const player = await Player.findOne({
+      user: userId,
+      room: roomId,
+    });
+
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        message: "Você não está nesta sala",
+      });
+    }
+
+    // Verificar se já foi eliminado
+    if (player.isEliminated) {
+      return res.status(400).json({
+        success: false,
+        message: "Você já foi eliminado desta competição",
+      });
+    }
+
+    // Verificar se já selecionou para esta rodada
+    const alreadySelected = player.selectedTeams.some(
+      (sel) => sel.round === room.currentRound
+    );
+
+    if (alreadySelected) {
+      return res.status(400).json({
+        success: false,
+        message: "Você já selecionou um time para esta rodada",
+        alreadySelected: true,
+      });
+    }
+
+    // Buscar partidas da rodada atual via SportsAPI
+    const sportsAPI = require("../services/sportsAPI.service");
+    const matches = await sportsAPI.getMatchesByRound(
+      room.league,
+      room.currentRound
+    );
+
+    if (matches.length === 0) {
+      console.log(
+        `⚠️ Nenhuma partida encontrada: ${room.league} - Rodada ${room.currentRound}`
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          matches: [],
+          round: room.currentRound,
+          usedTeams: player.getUsedTeamIds(),
+          message: "Nenhuma partida disponível para esta rodada ainda",
+        },
+      });
+    }
+
+    // Times já usados pelo jogador
+    const usedTeamIds = player.getUsedTeamIds();
+
+    // Formatar partidas com informação de disponibilidade
+    const formattedMatches = matches.map((match) => {
+      const homeTeamUsed = usedTeamIds.includes(match.homeTeamId);
+      const awayTeamUsed = usedTeamIds.includes(match.awayTeamId);
+
+      return {
+        id: match.id,
+        homeTeam: {
+          id: match.homeTeamId,
+          name: match.homeTeamName,
+          canSelect: !homeTeamUsed,
+          used: homeTeamUsed,
+        },
+        awayTeam: {
+          id: match.awayTeamId,
+          name: match.awayTeamName,
+          canSelect: !awayTeamUsed,
+          used: awayTeamUsed,
+        },
+        date: match.date,
+        time: match.time,
+        status: match.status,
+        round: match.round,
+        season: match.season,
+        hasAvailableTeam: !homeTeamUsed || !awayTeamUsed,
+      };
+    });
+
+    // Ordenar: partidas com times disponíveis primeiro
+    formattedMatches.sort((a, b) => {
+      if (a.hasAvailableTeam && !b.hasAvailableTeam) return -1;
+      if (!a.hasAvailableTeam && b.hasAvailableTeam) return 1;
+      return 0;
+    });
+
+    console.log(
+      `✅ ${formattedMatches.length} partidas encontradas (${
+        formattedMatches.filter((m) => m.hasAvailableTeam).length
+      } com times disponíveis)`
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        matches: formattedMatches,
+        round: room.currentRound,
+        totalRounds: room.totalRounds,
+        usedTeams: usedTeamIds,
+        league: room.league,
+        roomName: room.name,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar partidas disponíveis:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar partidas disponíveis",
       error: error.message,
     });
   }

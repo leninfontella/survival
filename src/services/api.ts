@@ -153,10 +153,16 @@ export const roomAPI = {
   },
 
   // Selecionar time para uma rodada
-  selectTeam: async (roomId: string, teamId: string, teamName: string) => {
+  selectTeam: async (
+    roomId: string,
+    teamId: string,
+    teamName: string,
+    matchId?: string // 🆕 ADICIONAR matchId opcional
+  ) => {
     const response = await api.post(`/rooms/${roomId}/select-team`, {
       teamId,
       teamName,
+      matchId, // 🆕 ADICIONAR ao body
     });
     return response.data;
   },
@@ -165,6 +171,16 @@ export const roomAPI = {
   getUsedTeams: async (roomId: string) => {
     const response = await api.get(`/rooms/${roomId}/used-teams`);
     return response.data;
+  },
+
+  getAvailableMatches: async (roomId: string) => {
+    try {
+      const response = await api.get(`/rooms/${roomId}/available-matches`);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar partidas disponíveis:", error);
+      throw error;
+    }
   },
 
   // Processar resultado da rodada (apenas admin)

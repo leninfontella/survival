@@ -33,7 +33,7 @@ const PlayerSchema = new mongoose.Schema({
   selectedTeams: [
     {
       teamId: {
-        type: String, // ID do time na API externa (TheSportsDB)
+        type: String,
         required: true,
       },
       teamName: {
@@ -46,11 +46,16 @@ const PlayerSchema = new mongoose.Schema({
       },
       won: {
         type: Boolean,
-        default: null, // null = ainda não verificado, true = venceu, false = perdeu/empatou
+        default: null,
       },
       selectedAt: {
         type: Date,
         default: Date.now,
+      },
+      matchId: {
+        // 🆕 ADICIONAR ESTE BLOCO
+        type: String,
+        required: false,
       },
       matchResult: {
         homeTeam: String,
