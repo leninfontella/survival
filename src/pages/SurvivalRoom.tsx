@@ -16,16 +16,11 @@ import {
   Loader2,
   Clock,
   CheckCircle2,
-  History,
-  RefreshCw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { roomAPI, authAPI } from "@/services/api";
 import heroBg from "@/assets/hero-bg.jpg";
-import { RoundHistory } from "@/components/RoundHistory";
-import { MatchResultIndicator } from "@/components/MatchResultIndicator";
-import { useActiveSurvivorRoom } from "@/hooks/useMatchResults";
 
 interface RoomData {
   _id: string;
@@ -39,7 +34,6 @@ interface RoomData {
     _id: string;
     name: string;
     isEliminated: boolean;
-    eliminationRound?: number;
     user?:
       | {
           _id: string;
@@ -51,13 +45,6 @@ interface RoomData {
       teamName: string;
       round: number;
       won: boolean | null;
-      selectedAt?: string;
-      matchResult?: {
-        homeTeam: string;
-        awayTeam: string;
-        homeScore: number;
-        awayScore: number;
-      };
     }>;
   }>;
 }
@@ -69,7 +56,6 @@ export default function SurvivalRoom() {
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
   const isMountedRef = useRef(true);
 
   // Buscar userId ao montar
@@ -77,41 +63,6 @@ export default function SurvivalRoom() {
     const userId = authAPI.getCurrentUserId();
     setCurrentUserId(userId);
   }, []);
-
-  // Encontrar jogador atual
-  const currentPlayer = roomData?.players.find((p) => {
-    if (!currentUserId) return false;
-    if (typeof p.user === "string") {
-      return p.user === currentUserId;
-    } else if (p.user) {
-      return p.user._id === currentUserId || p.user.id === currentUserId;
-    }
-    return false;
-  });
-
-  // Hook de resultados automáticos
-  const matchResults = useActiveSurvivorRoom({
-    roomId: roomId || "",
-    league: roomData?.league || "brasil",
-    currentRound: roomData?.currentRound || 1,
-    selectedTeamId: currentPlayer?.selectedTeams.find(
-      (s) => s.round === roomData?.currentRound
-    )?.teamId,
-    isEliminated: currentPlayer?.isEliminated || false,
-    onRoundComplete: () => {
-      toast({
-        title: "Rodada Completa!",
-        description: "Todos os resultados foram processados.",
-      });
-    },
-    onEliminated: () => {
-      toast({
-        title: "Você foi eliminado! 😢",
-        description: "Seu time não venceu nesta rodada.",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Verificar se o usuário atual é um jogador específico
   const isCurrentUser = useCallback(
@@ -142,10 +93,7 @@ export default function SurvivalRoom() {
     navigate(`/room/select-team/${roomId}`);
   }, [roomId, navigate]);
 
-  /**
-   * 🔥 FIX: Buscar dados da sala SEM POLLING
-   * Apenas busca ao montar e quando usuário faz ação manual
-   */
+  // Buscar dados da sala
   useEffect(() => {
     if (!roomId) {
       toast({
@@ -161,6 +109,7 @@ export default function SurvivalRoom() {
       try {
         const response = await roomAPI.getById(roomId);
         if (response.success && isMountedRef.current) {
+          // Verificar se precisa de convite
           if (response.needsInvite) {
             toast({
               title: "Sala Privada",
@@ -191,11 +140,19 @@ export default function SurvivalRoom() {
       }
     };
 
-    // 🔥 FIX: Buscar APENAS UMA VEZ ao montar
+    // Buscar inicialmente
     fetchRoom();
+
+    // Polling para atualizar dados a cada 5 segundos
+    const interval = setInterval(() => {
+      if (isMountedRef.current) {
+        fetchRoom();
+      }
+    }, 5000);
 
     return () => {
       isMountedRef.current = false;
+      clearInterval(interval);
     };
   }, [roomId, navigate]);
 
@@ -242,6 +199,7 @@ export default function SurvivalRoom() {
   const activePlayers = roomData.players.filter((p) => !p.isEliminated);
   const eliminatedPlayers = roomData.players.filter((p) => p.isEliminated);
 
+  // Filtrar jogadores com base na rodada atual
   const playersWithSelection = activePlayers.filter((p) => {
     if (!p.selectedTeams || p.selectedTeams.length === 0) return false;
     return p.selectedTeams.some((s) => s.round === roomData.currentRound);
@@ -252,19 +210,15 @@ export default function SurvivalRoom() {
     return !p.selectedTeams.some((s) => s.round === roomData.currentRound);
   });
 
-  const currentSelection = currentPlayer?.selectedTeams.find(
-    (s) => s.round === roomData.currentRound
-  );
-
   const isGameFinished =
     roomData.status === "finished" || activePlayers.length === 1;
   const winner = activePlayers.length === 1 ? activePlayers[0] : null;
 
+  // Verificar se o usuário atual precisa selecionar time
   const currentUserPlayer = activePlayers.find((p) => isCurrentUser(p));
   const currentUserNeedsSelection =
-    currentPlayer &&
-    !currentPlayer.isEliminated &&
-    !currentPlayer.selectedTeams?.some(
+    currentUserPlayer &&
+    !currentUserPlayer.selectedTeams?.some(
       (s) => s.round === roomData.currentRound
     );
 
@@ -294,7 +248,7 @@ export default function SurvivalRoom() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 flex items-center justify-between"
+          className="mb-8"
         >
           <Link to="/dashboard">
             <Button variant="ghost" className="hover:bg-primary/10">
@@ -302,30 +256,6 @@ export default function SurvivalRoom() {
               Início
             </Button>
           </Link>
-
-          <div className="flex gap-2">
-            {currentPlayer && (
-              <Button
-                variant="outline"
-                onClick={() => setShowHistory(!showHistory)}
-              >
-                <History className="mr-2 h-4 w-4" />
-                {showHistory ? "Ocultar" : "Ver"} Histórico
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => matchResults.refresh()}
-              disabled={matchResults.loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${
-                  matchResults.loading ? "animate-spin" : ""
-                }`}
-              />
-            </Button>
-          </div>
         </motion.div>
 
         <div className="max-w-6xl mx-auto space-y-6">
@@ -367,80 +297,7 @@ export default function SurvivalRoom() {
             </Card>
           </motion.div>
 
-          {/* Status da Rodada */}
-          {matchResults.stats.total > 0 && roomData.status === "active" && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Card className="border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-blue-500/5">
-                <CardContent className="pt-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-5 w-5 text-blue-500" />
-                      <div>
-                        <p className="font-semibold text-sm">
-                          Status da Rodada {roomData.currentRound}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {matchResults.stats.finished}/
-                          {matchResults.stats.total} partidas finalizadas (
-                          {matchResults.stats.percentComplete}%)
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {matchResults.isRoundComplete ? (
-                        <Badge className="bg-green-500">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Completa
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-blue-500">
-                          <Clock className="w-3 h-3 mr-1" />
-                          Em Andamento
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <motion.div
-                      className="bg-blue-500 h-2 rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{
-                        width: `${matchResults.stats.percentComplete}%`,
-                      }}
-                      transition={{ duration: 0.5 }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Resultado do Jogador Atual */}
-          {currentSelection && roomData.status === "active" && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-            >
-              <Card className="border-2 border-primary/30">
-                <CardContent className="pt-6">
-                  <MatchResultIndicator
-                    won={currentSelection.won}
-                    teamName={currentSelection.teamName}
-                    round={roomData.currentRound}
-                    matchResult={currentSelection.matchResult}
-                    size="lg"
-                    showDetails={true}
-                  />
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Call to Action */}
+          {/* Call to Action - Se o usuário precisa selecionar */}
           <AnimatePresence>
             {currentUserNeedsSelection && (
               <motion.div
@@ -489,22 +346,6 @@ export default function SurvivalRoom() {
                   </CardContent>
                 </Card>
               </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Histórico de Rodadas */}
-          <AnimatePresence>
-            {showHistory && currentPlayer && (
-              <RoundHistory
-                selections={currentPlayer.selectedTeams.map((s) => ({
-                  ...s,
-                  selectedAt: s.selectedAt || "",
-                }))}
-                currentRound={roomData.currentRound}
-                totalRounds={roomData.totalRounds}
-                isEliminated={currentPlayer.isEliminated}
-                eliminationRound={currentPlayer.eliminationRound}
-              />
             )}
           </AnimatePresence>
 
