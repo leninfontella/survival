@@ -24,6 +24,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/rooms", require("./routes/rooms"));
 app.use("/api/stats", require("./routes/stats"));
 app.use("/api/matches", require("./routes/matches")); // 🆕 Nova rota de partidas
+app.use("/api/leagues", require("./routes/leagues"));
 
 // Rota de teste
 app.get("/", (req, res) => {

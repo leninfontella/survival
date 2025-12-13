@@ -3,6 +3,7 @@ const router = express.Router();
 const Room = require("../models/Room");
 const Player = require("../models/Player");
 const User = require("../models/User");
+const { getDashboardStats } = require("../controllers/statsController");
 
 // @route   GET /api/stats
 // @desc    Obter estatísticas para a página inicial
@@ -70,5 +71,10 @@ router.get("/", async (req, res) => {
     });
   }
 });
+
+// @route   GET /api/stats/dashboard
+// @desc    Obter estatísticas para o dashboard de admin
+// @access  Public (ou Private/Admin)
+router.get("/dashboard", getDashboardStats);
 
 module.exports = router;

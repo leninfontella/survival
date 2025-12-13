@@ -1,114 +1,190 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Check, X, Trophy, Shield, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Trophy, Loader2, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { TeamTransition } from "@/components/TeamTransition";
-import { roomAPI, authAPI } from "@/services/api";
-import { useGame } from "@/hooks/useGame";
-
-type League =
-  | "brasil"
-  | "espanha"
-  | "inglaterra"
-  | "alemanha"
-  | "italia"
-  | "franca";
-
-interface Team {
-  id: string;
-  name: string;
-  logo: string;
-  league: League;
-}
+import { roomAPI } from "@/services/api";
+import { MatchCard } from "@/components/MatchCard";
+import { LiveMatchIndicator } from "@/components/LiveMatchIndicator";
+import type { Match } from "@/services/api";
+import type { Team } from "@/types/game";
 
 interface RoomData {
   _id: string;
   name: string;
-  league: League;
+  league: string;
   status: string;
   currentRound: number;
   totalRounds: number;
   prizePool: number;
 }
 
+interface MatchWithAvailability extends Match {
+  homeTeam: Match["homeTeam"] & {
+    canSelect?: boolean;
+    used?: boolean;
+  };
+  awayTeam: Match["awayTeam"] & {
+    canSelect?: boolean;
+    used?: boolean;
+  };
+  hasAvailableTeam?: boolean;
+}
+
 export default function SelectTeam() {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
-  const { teams, getTeamsByLeague } = useGame();
+
+  // Estados
   const [roomData, setRoomData] = useState<RoomData | null>(null);
+  const [matches, setMatches] = useState<MatchWithAvailability[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Seleção
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [selectedTeamName, setSelectedTeamName] = useState<string>("");
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [isHome, setIsHome] = useState<boolean>(false);
   const [showTransition, setShowTransition] = useState(false);
-  const [usedTeams, setUsedTeams] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Debug: Verificar roomId
-  useEffect(() => {
-    console.log("🔍 SelectTeam carregado");
-    console.log("🔍 RoomId da URL:", roomId);
-    console.log("🔍 URL completa:", window.location.href);
-    console.log("🎯 Total de times disponíveis:", teams.length);
-  }, [roomId, teams]);
-
-  // Buscar dados da sala
-  useEffect(() => {
-    const fetchRoom = async () => {
-      // Verificação mais robusta do roomId
-      if (!roomId || roomId === "undefined" || roomId.trim() === "") {
-        console.error("❌ RoomId inválido:", roomId);
+  // 🔥 BUSCAR DADOS DA SALA E PARTIDAS
+  const fetchData = useCallback(
+    async (isRefresh = false) => {
+      if (!roomId) {
         toast({
           title: "Erro",
-          description: "ID da sala não encontrado. Redirecionando...",
+          description: "ID da sala não encontrado.",
           variant: "destructive",
         });
-        setTimeout(() => navigate("/dashboard"), 2000);
+        navigate("/dashboard");
         return;
       }
 
-      setIsLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+
       try {
-        console.log("🔍 Buscando sala com ID:", roomId);
+        // 1. Buscar dados da sala, times usados e partidas em paralelo
+        const [roomResponse, usedTeamsResponse, matchesResponse] =
+          await Promise.all([
+            roomAPI.getById(roomId),
+            roomAPI.getUsedTeams(roomId),
+            roomAPI.getAvailableMatches(roomId),
+          ]);
 
-        // Buscar dados da sala
-        const roomResponse = await roomAPI.getById(roomId);
-        console.log("📦 Resposta da sala:", roomResponse);
-
-        if (roomResponse.success) {
-          setRoomData(roomResponse.data);
-          console.log("✅ Liga da sala:", roomResponse.data.league);
+        if (!roomResponse.success) {
+          throw new Error(roomResponse.message || "Erro ao buscar dados da sala.");
         }
+        setRoomData(roomResponse.data);
 
-        // Buscar times já usados
-        const usedTeamsResponse = await roomAPI.getUsedTeams(roomId);
-        console.log("📦 Resposta times usados:", usedTeamsResponse);
+        const usedIds =
+          usedTeamsResponse.success && usedTeamsResponse.data.usedTeams
+            ? usedTeamsResponse.data.usedTeams.map((id: string) => parseInt(id))
+            : [];
 
-        if (usedTeamsResponse.success) {
-          setUsedTeams(usedTeamsResponse.data.usedTeams);
-          console.log("✅ Times já usados:", usedTeamsResponse.data.usedTeams);
+        if (matchesResponse.success && matchesResponse.data.matches) {
+          const formattedMatches = matchesResponse.data.matches.map(
+            (match: Match) => {
+              const homeUsed = usedIds.includes(match.homeTeam.apiTeamId);
+              const awayUsed = usedIds.includes(match.awayTeam.apiTeamId);
+              return {
+                ...match,
+                homeTeam: {
+                  ...match.homeTeam,
+                  canSelect: !homeUsed,
+                  used: homeUsed,
+                },
+                awayTeam: {
+                  ...match.awayTeam,
+                  canSelect: !awayUsed,
+                  used: awayUsed,
+                },
+                hasAvailableTeam: !homeUsed || !awayUsed,
+              };
+            }
+          );
+          setMatches(formattedMatches);
+        } else {
+          setMatches([]);
         }
-      } catch (error) {
-        console.error("❌ Erro ao buscar sala:", error);
+      } catch (error: any) {
+        console.error("❌ Erro ao buscar dados:", error);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar a sala.",
+          description:
+            error.message || "Não foi possível carregar os dados da sala.",
           variant: "destructive",
         });
-        setTimeout(() => navigate("/dashboard"), 2000);
+        // Se a sala não for encontrada, volta pro dashboard
+        if (error.response?.status === 404) {
+          navigate("/dashboard");
+        }
       } finally {
         setIsLoading(false);
+        setIsRefreshing(false);
       }
-    };
+    },
+    [roomId, navigate]
+  );
 
-    fetchRoom();
-  }, [roomId, navigate]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
+  // 🔥 ATUALIZAR PARTIDAS
+  const handleRefresh = async () => {
+    if (!roomId) return;
+
+    setIsRefreshing(true);
+    try {
+      const data = await roomAPI.updateMatches(roomId);
+
+      if (data.success) {
+        toast({
+          title: "Atualizado!",
+          description: "Partidas atualizadas com sucesso.",
+        });
+        // Recarrega os dados sem dar refresh na página
+        await fetchData(true);
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar as partidas.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // 🔥 SELECIONAR TIME
+  const handleSelectTeam = (
+    teamId: number,
+    teamName: string,
+    matchId: string,
+    isHomeTeam: boolean
+  ) => {
+    setSelectedTeamId(teamId);
+    setSelectedTeamName(teamName);
+    setSelectedMatchId(matchId);
+    setIsHome(isHomeTeam);
+  };
+
+  // 🔥 CONFIRMAR SELEÇÃO
   const handleConfirm = async () => {
-    if (!selectedTeamId) {
+    if (!selectedTeamId || !selectedMatchId) {
       toast({
         title: "Selecione um time",
         description: "Você precisa escolher um time para continuar.",
@@ -119,35 +195,29 @@ export default function SelectTeam() {
 
     if (!roomId) return;
 
-    const selectedTeam = availableTeams.find((t) => t.id === selectedTeamId);
-    if (!selectedTeam) return;
-
     setIsSaving(true);
     try {
-      console.log("💾 Salvando seleção:", {
-        roomId,
-        teamId: selectedTeamId,
-        teamName: selectedTeam.name,
-      });
-
-      // Chamar API para salvar a seleção do time
       const response = await roomAPI.selectTeam(
         roomId,
-        selectedTeamId,
-        selectedTeam.name
+        selectedTeamId.toString(), // teamId (legado, pode ser removido no futuro)
+        selectedTeamName,
+        selectedMatchId,
+        selectedTeamId // apiTeamId
       );
 
       if (response.success) {
-        console.log("✅ Time salvo com sucesso");
         setShowTransition(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar time:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar sua escolha.",
+        description:
+          error.response?.data?.message ||
+          "Não foi possível salvar sua escolha.",
         variant: "destructive",
       });
+    } finally {
       setIsSaving(false);
     }
   };
@@ -160,41 +230,24 @@ export default function SelectTeam() {
     navigate(`/survival-room/${roomId}`);
   };
 
-  const isTeamUsed = (teamId: string) => usedTeams.includes(teamId);
+  // Contar partidas ao vivo
+  const liveCount = matches.filter((m) => m.status === "live").length;
 
-  // 🎯 CORREÇÃO: Usar times do contexto baseado na liga da sala com useMemo
-  const availableTeams: Team[] = useMemo(() => {
-    return roomData ? getTeamsByLeague(roomData.league) : [];
-  }, [roomData, getTeamsByLeague]);
-
-  useEffect(() => {
-    if (roomData) {
-      console.log(
-        "🎯 Times disponíveis para a liga",
-        roomData.league,
-        ":",
-        availableTeams.length
-      );
-    }
-  }, [roomData, availableTeams]);
-
-  const selectedTeam = selectedTeamId
-    ? availableTeams.find((t) => t.id === selectedTeamId)
-    : null;
-
+  // 🔥 LOADING STATE
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Carregando sala...</p>
+            <p className="text-muted-foreground">Carregando partidas...</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  // 🔥 ERROR STATES
   if (!roomData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
@@ -210,16 +263,22 @@ export default function SelectTeam() {
     );
   }
 
-  if (availableTeams.length === 0) {
+  if (matches.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground mb-4">
-              Nenhum time disponível para a liga: {roomData.league}
+              Nenhuma partida disponível para a rodada {roomData.currentRound}
             </p>
-            <Link to="/dashboard">
-              <Button>Voltar ao Dashboard</Button>
+            <Button onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+              {isRefreshing ? "Atualizando..." : "Tentar Novamente"}
+            </Button>
+            <Link to="/dashboard" className="block mt-4">
+              <Button variant="outline">Voltar ao Dashboard</Button>
             </Link>
           </CardContent>
         </Card>
@@ -227,18 +286,29 @@ export default function SelectTeam() {
     );
   }
 
+  const selectedMatch = matches.find((m) => m._id === selectedMatchId);
+
+  // 🔥 MAIN RENDER
   return (
     <>
       <AnimatePresence>
-        {showTransition && selectedTeam && (
+        {showTransition && selectedMatch && roomData && (
           <TeamTransition
-            team={selectedTeam}
+            team={{
+              id: selectedTeamId?.toString() || "",
+              name: selectedTeamName,
+              logo: isHome
+                ? selectedMatch.homeTeam.logo
+                : selectedMatch.awayTeam.logo,
+              league: roomData.league as Team["league"],
+            }}
             onComplete={handleTransitionComplete}
           />
         )}
       </AnimatePresence>
+
       <div className="min-h-screen bg-gradient-to-br from-background via-card/30 to-background relative overflow-hidden">
-        {/* Animated Background Pattern */}
+        {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div
             className="absolute inset-0"
@@ -250,6 +320,7 @@ export default function SelectTeam() {
         </div>
 
         <div className="container mx-auto px-4 py-8 relative z-10">
+          {/* Back Button */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -263,7 +334,7 @@ export default function SelectTeam() {
             </Link>
           </motion.div>
 
-          <div className="max-w-6xl mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6">
             {/* Header Card */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -272,30 +343,53 @@ export default function SelectTeam() {
             >
               <Card className="border-primary/30 bg-gradient-to-br from-card/90 via-card/50 to-card/90 backdrop-blur-xl shadow-2xl shadow-primary/10">
                 <CardHeader className="text-center space-y-4 pb-8">
-                  <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center justify-center gap-3 flex-wrap">
                     <Trophy className="h-8 w-8 text-primary animate-pulse" />
-                    <CardTitle className="text-4xl md:text-5xl font-black bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
+                    <CardTitle className="text-3xl md:text-5xl font-black bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
                       Rodada {roomData.currentRound}
                     </CardTitle>
                     <Trophy className="h-8 w-8 text-primary animate-pulse" />
+                    {liveCount > 0 && (
+                      <LiveMatchIndicator count={liveCount} showCount />
+                    )}
                   </div>
+
                   <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                    Escolha o time que você acredita que irá{" "}
-                    <span className="text-primary font-bold">VENCER</span> nesta
-                    rodada
+                    Escolha uma{" "}
+                    <span className="text-primary font-bold">PARTIDA</span> e
+                    selecione o time que você acredita que irá{" "}
+                    <span className="text-primary font-bold">VENCER</span>
                   </p>
+
                   <div className="flex items-center justify-center gap-4 text-sm flex-wrap">
                     <Badge variant="outline">Sala: {roomData.name}</Badge>
                     <Badge variant="outline">Liga: {roomData.league}</Badge>
                     <Badge variant="outline">
                       Prêmio: R$ {roomData.prizePool.toFixed(2)}
                     </Badge>
+                    <Badge variant="outline">Partidas: {matches.length}</Badge>
                   </div>
+
+                  {/* Botão Atualizar */}
+                  <Button
+                    onClick={handleRefresh}
+                    variant="outline"
+                    size="sm"
+                    disabled={isRefreshing}
+                    className="mt-2"
+                  >
+                    <RefreshCw
+                      className={`mr-2 h-4 w-4 ${
+                        isRefreshing ? "animate-spin" : ""
+                      }`}
+                    />
+                    {isRefreshing ? "Atualizando..." : "Atualizar Partidas"}
+                  </Button>
                 </CardHeader>
               </Card>
             </motion.div>
 
-            {/* Teams Grid */}
+            {/* Matches Grid */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -303,113 +397,35 @@ export default function SelectTeam() {
             >
               <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-xl">
                 <CardHeader className="border-b border-border/50">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-xl">
-                      Times Disponíveis ({availableTeams.length})
-                    </CardTitle>
-                  </div>
+                  <CardTitle className="text-2xl">
+                    Partidas Disponíveis (
+                    {matches.filter((m) => m.hasAvailableTeam).length})
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Clique em um time para selecioná-lo
+                  </p>
                 </CardHeader>
+
                 <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {availableTeams.map((team, index) => {
-                      const used = isTeamUsed(team.id);
-                      const selected = selectedTeamId === team.id;
-
-                      return (
-                        <motion.button
-                          key={team.id}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: index * 0.02 }}
-                          whileHover={!used ? { scale: 1.05, y: -5 } : {}}
-                          whileTap={!used ? { scale: 0.98 } : {}}
-                          onClick={() => !used && setSelectedTeamId(team.id)}
-                          disabled={used}
-                          className={`
-                          relative p-5 rounded-xl border-2 transition-all duration-300 group overflow-hidden
-                          ${
-                            used
-                              ? "opacity-40 cursor-not-allowed bg-muted/50"
-                              : "cursor-pointer hover:shadow-xl hover:shadow-primary/20"
-                          }
-                          ${
-                            selected
-                              ? "border-primary bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-lg shadow-primary/30"
-                              : "border-border/50 bg-gradient-to-br from-card to-background/50 hover:border-primary/50"
-                          }
-                        `}
-                        >
-                          {selected && (
-                            <motion.div
-                              className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20"
-                              animate={{ opacity: [0.3, 0.6, 0.3] }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                            />
-                          )}
-
-                          <div className="relative flex flex-col items-center gap-4">
-                            <div
-                              className={`
-                            w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300
-                            ${
-                              selected
-                                ? "bg-primary/20 ring-4 ring-primary/30"
-                                : "bg-background/50 group-hover:bg-primary/10"
-                            }
-                          `}
-                            >
-                              <img
-                                src={team.logo}
-                                alt={team.name}
-                                className="w-14 h-14 object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "https://via.placeholder.com/56x56?text=" +
-                                    team.name.charAt(0);
-                                }}
-                              />
-                            </div>
-
-                            <span
-                              className={`
-                            font-bold text-center text-sm transition-colors
-                            ${
-                              selected
-                                ? "text-primary"
-                                : "text-foreground group-hover:text-primary"
-                            }
-                          `}
-                            >
-                              {team.name}
-                            </span>
-
-                            {used && (
-                              <Badge
-                                variant="destructive"
-                                className="absolute -top-2 -right-2 flex items-center gap-1 shadow-lg"
-                              >
-                                <X className="h-3 w-3" />
-                                Usado
-                              </Badge>
-                            )}
-
-                            {selected && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute -top-2 -right-2 flex items-center justify-center w-8 h-8 rounded-full bg-primary shadow-lg shadow-primary/50"
-                              >
-                                <Check className="h-5 w-5 text-primary-foreground" />
-                              </motion.div>
-                            )}
-                          </div>
-                        </motion.button>
-                      );
-                    })}
+                  {/* Grid de Partidas */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {matches.map((match, index) => (
+                      <motion.div
+                        key={match._id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                      >
+                        <MatchCard
+                          match={match}
+                          onSelectTeam={handleSelectTeam}
+                          selectedTeamId={selectedTeamId}
+                        />
+                      </motion.div>
+                    ))}
                   </div>
 
-                  {/* Rules Card */}
+                  {/* Regras */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -455,12 +471,25 @@ export default function SelectTeam() {
                               , você é eliminado
                             </span>
                           </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-amber-500 font-bold">•</span>
+                            <span>
+                              Times marcados como{" "}
+                              <Badge
+                                variant="destructive"
+                                className="inline-flex mx-1"
+                              >
+                                Usado
+                              </Badge>{" "}
+                              não podem ser selecionados
+                            </span>
+                          </li>
                         </ul>
                       </div>
                     </div>
                   </motion.div>
 
-                  {/* Confirm Button */}
+                  {/* Botão Confirmar */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -477,10 +506,15 @@ export default function SelectTeam() {
                           <Loader2 className="mr-2 h-6 w-6 animate-spin" />
                           Salvando...
                         </>
+                      ) : selectedTeamId ? (
+                        <>
+                          <Check className="mr-2 h-6 w-6" />
+                          Confirmar {selectedTeamName}
+                        </>
                       ) : (
                         <>
                           <Check className="mr-2 h-6 w-6" />
-                          Confirmar Escolha
+                          Selecione um Time
                         </>
                       )}
                     </Button>
@@ -488,60 +522,10 @@ export default function SelectTeam() {
                 </CardContent>
               </Card>
             </motion.div>
-
-            {/* Used Teams Card */}
-            {usedTeams.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-xl">
-                  <CardHeader className="border-b border-border/50">
-                    <CardTitle className="text-xl">
-                      Seus Times Já Usados ({usedTeams.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-wrap gap-3">
-                      {usedTeams.map((teamId, index) => {
-                        const team = availableTeams.find(
-                          (t) => t.id === teamId
-                        );
-                        return team ? (
-                          <motion.div
-                            key={teamId}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.3, delay: index * 0.05 }}
-                          >
-                            <Badge
-                              variant="secondary"
-                              className="text-sm py-2 px-4 flex items-center gap-2"
-                            >
-                              <img
-                                src={team.logo}
-                                alt={team.name}
-                                className="w-5 h-5 object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "https://via.placeholder.com/20x20?text=" +
-                                    team.name.charAt(0);
-                                }}
-                              />
-                              {team.name}
-                            </Badge>
-                          </motion.div>
-                        ) : null;
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
           </div>
         </div>
       </div>
     </>
   );
 }
+

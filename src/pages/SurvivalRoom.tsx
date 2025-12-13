@@ -16,11 +16,14 @@ import {
   Loader2,
   Clock,
   CheckCircle2,
+  RefreshCw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { roomAPI, authAPI } from "@/services/api";
+import { roomAPI, authAPI, matchAPI, type Match } from "@/services/api";
 import heroBg from "@/assets/hero-bg.jpg";
+import { MatchCard } from "@/components/MatchCard";
+import { LiveMatchIndicator } from "@/components/LiveMatchIndicator";
 
 interface RoomData {
   _id: string;
@@ -45,6 +48,11 @@ interface RoomData {
       teamName: string;
       round: number;
       won: boolean | null;
+      matchInfo?: {
+        opponent: string;
+        isHome: boolean;
+        date: string;
+      };
     }>;
   }>;
 }
@@ -57,6 +65,10 @@ export default function SurvivalRoom() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+
+  // 🆕 NOVO: Estados para partidas ao vivo
+  const [liveMatches, setLiveMatches] = useState<Match[]>([]);
+  const [loadingLive, setLoadingLive] = useState(false);
 
   // Buscar userId ao montar
   useEffect(() => {
@@ -92,6 +104,26 @@ export default function SurvivalRoom() {
 
     navigate(`/room/select-team/${roomId}`);
   }, [roomId, navigate]);
+
+  // 🆕 NOVO: Buscar partidas ao vivo
+  const fetchLiveMatches = useCallback(async () => {
+    if (!roomData?.league) return;
+
+    setLoadingLive(true);
+    try {
+      const response = await matchAPI.getLive(roomData.league);
+      if (response.success && isMountedRef.current) {
+        setLiveMatches(response.data.matches);
+        console.log("🔴 Partidas ao vivo:", response.data.matches.length);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar partidas ao vivo:", error);
+    } finally {
+      if (isMountedRef.current) {
+        setLoadingLive(false);
+      }
+    }
+  }, [roomData?.league]);
 
   // Buscar dados da sala
   useEffect(() => {
@@ -155,6 +187,25 @@ export default function SurvivalRoom() {
       clearInterval(interval);
     };
   }, [roomId, navigate]);
+
+  // 🆕 NOVO: Polling para partidas ao vivo
+  useEffect(() => {
+    if (!roomData) return;
+
+    // Buscar inicialmente
+    fetchLiveMatches();
+
+    // Polling a cada 30 segundos
+    const interval = setInterval(() => {
+      if (isMountedRef.current) {
+        fetchLiveMatches();
+      }
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [fetchLiveMatches, roomData]);
 
   // Cleanup no unmount
   useEffect(() => {
@@ -385,6 +436,52 @@ export default function SurvivalRoom() {
             )}
           </AnimatePresence>
 
+          {/* 🆕 NOVO: Partidas Ao Vivo */}
+          {liveMatches.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+            >
+              <Card className="border-red-500 bg-gradient-to-br from-red-500/10 to-transparent shadow-xl">
+                <CardHeader className="border-b border-border/50">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-3">
+                      <LiveMatchIndicator count={liveMatches.length} size="lg" />
+                      <CardTitle className="text-xl">
+                        Partidas Ao Vivo
+                      </CardTitle>
+                    </div>
+                    <Button
+                      onClick={fetchLiveMatches}
+                      variant="outline"
+                      size="sm"
+                      disabled={loadingLive}
+                    >
+                      <RefreshCw
+                        className={`h-4 w-4 mr-2 ${
+                          loadingLive ? "animate-spin" : ""
+                        }`}
+                      />
+                      Atualizar
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {liveMatches.map((match) => (
+                      <MatchCard
+                        key={match._id}
+                        match={match as any}
+                        compact
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <motion.div
@@ -486,6 +583,9 @@ export default function SurvivalRoom() {
                           ? getTeamById(currentRoundSelection.teamId)
                           : null;
 
+                        // 🆕 NOVO: Pegar matchInfo
+                        const matchInfo = currentRoundSelection?.matchInfo;
+
                         return (
                           <motion.div
                             key={player._id}
@@ -523,9 +623,18 @@ export default function SurvivalRoom() {
                                   {player.name}
                                 </p>
                                 {currentRoundSelection && (
-                                  <p className="text-sm text-primary font-medium mt-0.5">
-                                    {currentRoundSelection.teamName}
-                                  </p>
+                                  <>
+                                    <p className="text-sm text-primary font-medium mt-0.5">
+                                      {currentRoundSelection.teamName}
+                                    </p>
+                                    {/* 🆕 NOVO: Mostrar adversário */}
+                                    {matchInfo && (
+                                      <p className="text-xs text-muted-foreground">
+                                        {matchInfo.isHome ? "vs" : "@"}{" "}
+                                        {matchInfo.opponent}
+                                      </p>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -641,50 +750,87 @@ export default function SurvivalRoom() {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent">
                 <motion.div
                   animate={{ x: ["-100%", "200%"] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  className="h-full w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                  className="absolute inset-0 w-1/2 skew-x-[-15deg] bg-white/10"
                 />
               </div>
-              <CardContent className="py-8 relative z-10">
-                <motion.div
-                  className="flex items-center justify-center gap-4 flex-wrap"
-                  animate={{ scale: [1, 1.02, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <motion.div
-                    animate={{ rotate: [0, 360] }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                  >
-                    <Zap className="h-10 w-10 text-primary" />
-                  </motion.div>
-                  <h3 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                    Sobreviva e Conquiste o Prêmio
-                  </h3>
-                  <motion.div
-                    animate={{ rotate: [0, -360] }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                  >
-                    <Zap className="h-10 w-10 text-primary" />
-                  </motion.div>
-                </motion.div>
-                <motion.p
-                  className="text-center text-muted-foreground mt-4 text-lg"
-                  animate={{ opacity: [0.7, 1, 0.7] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  Apenas os melhores chegam ao fim 🏆
-                </motion.p>
+              <CardContent className="py-8 text-center relative">
+                <Zap className="h-8 w-8 text-primary mx-auto mb-3" />
+                <h3 className="text-2xl font-bold text-foreground">
+                  A sorte favorece os corajosos!
+                </h3>
+                <p className="text-muted-foreground mt-1">
+                  Faça sua escolha e sobreviva a mais uma rodada.
+                </p>
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Eliminated Players */}
+          {eliminatedPlayers.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="mt-6"
+            >
+              <Card className="bg-gradient-to-br from-card to-background/50 border-destructive/30 shadow-xl">
+                <CardHeader className="border-b border-border/50">
+                  <div className="flex items-center gap-2">
+                    <Skull className="h-5 w-5 text-destructive" />
+                    <CardTitle className="text-xl">
+                      Jogadores Eliminados
+                    </CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    {eliminatedPlayers.map((player, index) => {
+                      const lastPick =
+                        player.selectedTeams.length > 0
+                          ? player.selectedTeams[
+                              player.selectedTeams.length - 1
+                            ]
+                          : null;
+                      return (
+                        <motion.div
+                          key={player._id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-destructive/10 to-transparent border border-destructive/20"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center font-bold text-destructive">
+                              {player.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground line-through">
+                                {player.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {lastPick
+                                  ? `Última escolha: ${lastPick.teamName} (Rodada ${lastPick.round})`
+                                  : "Não fez nenhuma escolha"}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="destructive">
+                            <Skull className="w-3 h-3 mr-1" />
+                            Eliminado
+                          </Badge>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>
