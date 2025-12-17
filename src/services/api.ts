@@ -40,48 +40,6 @@ api.interceptors.response.use(
   }
 );
 
-// ============= TYPES =============
-
-export interface AppConfig {
-  version: string;
-  leagues: { id: string; name: string; logo?: string }[];
-  // Outras configurações relevantes da aplicação
-}
-
-export interface Match {
-  _id: string;
-  apiMatchId: number;
-  league: string;
-  round: number;
-  homeTeam: {
-    apiTeamId: number;
-    name: string;
-    logo: string;
-  };
-  awayTeam: {
-    apiTeamId: number;
-    name: string;
-    logo: string;
-  };
-  date: string;
-  status: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
-  statusDetail: {
-    short: string;
-    long: string;
-    elapsed?: number;
-  };
-  result: {
-    home: number | null;
-    away: number | null;
-    winner: "home" | "away" | "draw" | null;
-  };
-  venue?: {
-    name: string;
-    city: string;
-  };
-  lastUpdated: string;
-}
-
 // ============= AUTH ENDPOINTS =============
 
 export const authAPI = {
@@ -194,19 +152,11 @@ export const roomAPI = {
     return response.data;
   },
 
-  // 🆕 ATUALIZADO: Selecionar time com dados da partida
-  selectTeam: async (
-    roomId: string,
-    teamId: string,
-    teamName: string,
-    matchId?: string,
-    apiTeamId?: number
-  ) => {
+  // Selecionar time para uma rodada
+  selectTeam: async (roomId: string, teamId: string, teamName: string) => {
     const response = await api.post(`/rooms/${roomId}/select-team`, {
       teamId,
       teamName,
-      matchId,
-      apiTeamId,
     });
     return response.data;
   },
@@ -214,18 +164,6 @@ export const roomAPI = {
   // Obter times já usados pelo jogador
   getUsedTeams: async (roomId: string) => {
     const response = await api.get(`/rooms/${roomId}/used-teams`);
-    return response.data;
-  },
-
-  // Obter partidas disponíveis para seleção
-  getAvailableMatches: async (roomId: string) => {
-    const response = await api.get(`/rooms/${roomId}/available-matches`);
-    return response.data;
-  },
-
-  // Forçar atualização das partidas da rodada
-  updateMatches: async (roomId: string) => {
-    const response = await api.put(`/rooms/${roomId}/update-matches`);
     return response.data;
   },
 
@@ -323,115 +261,6 @@ export const statsAPI = {
         currentRound: 0,
         activeRooms: 0,
         finishedRooms: 0,
-      };
-    }
-  },
-};
-
-// ============= 🆕 MATCH ENDPOINTS =============
-
-export const matchAPI = {
-  /**
-   * Buscar partidas de uma rodada específica
-   */
-  getByRound: async (league: string, round: number, forceSync = false) => {
-    const params = new URLSearchParams();
-    if (forceSync) params.append("forceSync", "true");
-
-    const response = await api.get(
-      `/matches/round/${round}/league/${league}?${params.toString()}`
-    );
-    return response.data;
-  },
-
-  /**
-   * Buscar partidas ao vivo de uma liga
-   */
-  getLive: async (league: string) => {
-    const response = await api.get(`/matches/live/${league}`);
-    return response.data;
-  },
-
-  /**
-   * Buscar uma partida específica por ID
-   */
-  getById: async (matchId: string) => {
-    const response = await api.get(`/matches/${matchId}`);
-    return response.data;
-  },
-
-  /**
-   * Atualizar resultado de uma partida
-   */
-  updateResult: async (matchId: string) => {
-    const response = await api.put(`/matches/${matchId}/update`);
-    return response.data;
-  },
-
-  /**
-   * Sincronizar partidas de uma rodada com a API
-   */
-  sync: async (league: string, round: number) => {
-    const response = await api.post("/matches/sync", { league, round });
-    return response.data;
-  },
-
-  /**
-   * Buscar próximas partidas de uma liga
-   */
-  getUpcoming: async (league: string, limit = 10) => {
-    const response = await api.get(
-      `/matches/upcoming/${league}?limit=${limit}`
-    );
-    return response.data;
-  },
-
-  /**
-   * Buscar partidas de um time específico
-   */
-  getByTeam: async (teamId: number, league?: string, round?: number) => {
-    const params = new URLSearchParams();
-    if (league) params.append("league", league);
-    if (round) params.append("round", round.toString());
-
-    const response = await api.get(
-      `/matches/team/${teamId}?${params.toString()}`
-    );
-    return response.data;
-  },
-
-  /**
-   * Obter estatísticas das partidas
-   */
-  getStats: async (league: string) => {
-    const response = await api.get(`/matches/stats/${league}`);
-    return response.data;
-  },
-};
-
-// ============= CONFIG ENDPOINTS =============
-
-export const configAPI = {
-  /**
-   * Obter configuração pública da aplicação
-   */
-  getConfig: async (): Promise<AppConfig> => {
-    try {
-      const response = await api.get("/config");
-
-      if (!response.data.success) {
-        throw new Error(
-          response.data.message || "Erro ao buscar configuração da aplicação"
-        );
-      }
-
-      return response.data.data;
-    } catch (error) {
-      console.error("Erro ao buscar configuração:", error);
-      // Retornar valores padrão em caso de erro
-      return {
-        version: "0.0.0",
-        leagues: [],
       };
     }
   },
