@@ -16,6 +16,10 @@ import {
   Loader2,
   Clock,
   CheckCircle2,
+  History,
+  X,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -56,6 +60,7 @@ export default function SurvivalRoom() {
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const isMountedRef = useRef(true);
 
   // Buscar userId ao montar
@@ -168,6 +173,36 @@ export default function SurvivalRoom() {
     [teams]
   );
 
+  // Função para obter histórico de rodadas
+  const getRoundHistory = useCallback(() => {
+    if (!roomData) return [];
+
+    const history = [];
+    for (let round = 1; round <= roomData.totalRounds; round++) {
+      const roundPlayers = roomData.players
+        .map((player) => {
+          const selection = player.selectedTeams.find((s) => s.round === round);
+          return {
+            playerName: player.name,
+            playerId: player._id,
+            selection,
+            isEliminated: player.isEliminated,
+          };
+        })
+        .filter((p) => p.selection);
+
+      history.push({
+        round,
+        players: roundPlayers,
+        isActive: round === roomData.currentRound,
+        isPast: round < roomData.currentRound,
+        isFuture: round > roomData.currentRound,
+      });
+    }
+
+    return history;
+  }, [roomData]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
@@ -222,6 +257,8 @@ export default function SurvivalRoom() {
       (s) => s.round === roomData.currentRound
     );
 
+  const roundHistory = getRoundHistory();
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Hero Background */}
@@ -243,6 +280,225 @@ export default function SurvivalRoom() {
           }}
         />
       </div>
+
+      {/* Modal de Histórico */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowHistory(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-4xl max-h-[90vh] overflow-hidden"
+            >
+              <Card className="border-primary/30 bg-gradient-to-br from-card via-card/95 to-background shadow-2xl">
+                <CardHeader className="border-b border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <History className="h-6 w-6 text-primary" />
+                      <CardTitle className="text-2xl font-bold">
+                        Histórico de Rodadas
+                      </CardTitle>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowHistory(false)}
+                      className="hover:bg-destructive/10"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                  <div className="space-y-6">
+                    {roundHistory.map((round) => (
+                      <motion.div
+                        key={round.round}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: round.round * 0.1 }}
+                      >
+                        <Card
+                          className={`${
+                            round.isActive
+                              ? "border-primary bg-primary/5"
+                              : round.isPast
+                              ? "border-border/50 bg-card/50"
+                              : "border-dashed border-muted-foreground/30 bg-muted/20"
+                          }`}
+                        >
+                          <CardHeader className="pb-4">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
+                                    round.isActive
+                                      ? "bg-primary text-primary-foreground"
+                                      : round.isPast
+                                      ? "bg-muted text-muted-foreground"
+                                      : "bg-muted/50 text-muted-foreground/50"
+                                  }`}
+                                >
+                                  {round.round}
+                                </div>
+                                <div>
+                                  <h3 className="text-xl font-bold">
+                                    Rodada {round.round}/{roomData.totalRounds}
+                                  </h3>
+                                  {round.isActive && (
+                                    <Badge
+                                      variant="default"
+                                      className="mt-1 bg-primary"
+                                    >
+                                      Rodada Atual
+                                    </Badge>
+                                  )}
+                                  {round.isPast && (
+                                    <Badge
+                                      variant="outline"
+                                      className="mt-1 border-green-500 text-green-500"
+                                    >
+                                      Concluída
+                                    </Badge>
+                                  )}
+                                  {round.isFuture && (
+                                    <Badge
+                                      variant="outline"
+                                      className="mt-1 border-muted-foreground/50 text-muted-foreground/50"
+                                    >
+                                      Aguardando
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {round.isFuture ? (
+                              <div className="text-center py-8">
+                                <Clock className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                                <p className="text-muted-foreground text-lg">
+                                  Aguardando rodada
+                                </p>
+                              </div>
+                            ) : round.players.length === 0 ? (
+                              <div className="text-center py-8">
+                                <p className="text-muted-foreground">
+                                  Nenhum jogador selecionou time nesta rodada
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {round.players.map((player, idx) => {
+                                  const team = getTeamById(
+                                    player.selection!.teamId
+                                  );
+                                  const won = player.selection!.won;
+
+                                  return (
+                                    <motion.div
+                                      key={player.playerId}
+                                      initial={{ opacity: 0, x: -20 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      transition={{ delay: idx * 0.05 }}
+                                      className={`flex items-center justify-between p-4 rounded-lg border ${
+                                        won === true
+                                          ? "bg-green-500/10 border-green-500/30"
+                                          : won === false
+                                          ? "bg-red-500/10 border-red-500/30"
+                                          : "bg-muted/30 border-border/30"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3 flex-1">
+                                        {team ? (
+                                          <div className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center p-1.5 shadow overflow-hidden">
+                                            <img
+                                              src={team.logo}
+                                              alt={team.name}
+                                              className="w-full h-full object-contain"
+                                              onError={(e) => {
+                                                const target = e.currentTarget;
+                                                target.style.display = "none";
+                                                const parent =
+                                                  target.parentElement;
+                                                if (parent) {
+                                                  parent.innerHTML = `<span class="text-primary font-bold">${team.name
+                                                    .charAt(0)
+                                                    .toUpperCase()}</span>`;
+                                                }
+                                              }}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-sm">
+                                            {player.playerName
+                                              .charAt(0)
+                                              .toUpperCase()}
+                                          </div>
+                                        )}
+                                        <div className="flex-1">
+                                          <p className="font-semibold text-foreground">
+                                            {player.playerName}
+                                          </p>
+                                          <p className="text-sm text-muted-foreground">
+                                            {player.selection!.teamName}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        {won === true && (
+                                          <Badge
+                                            variant="default"
+                                            className="bg-green-500 hover:bg-green-600"
+                                          >
+                                            <CheckCircle className="w-3 h-3 mr-1" />
+                                            Venceu
+                                          </Badge>
+                                        )}
+                                        {won === false && (
+                                          <Badge
+                                            variant="destructive"
+                                            className="bg-red-500 hover:bg-red-600"
+                                          >
+                                            <XCircle className="w-3 h-3 mr-1" />
+                                            Perdeu
+                                          </Badge>
+                                        )}
+                                        {won === null && (
+                                          <Badge
+                                            variant="outline"
+                                            className="border-muted-foreground/50 text-muted-foreground"
+                                          >
+                                            <Clock className="w-3 h-3 mr-1" />
+                                            Aguardando
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </motion.div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="container mx-auto px-4 py-8 relative z-10">
         <motion.div
@@ -278,7 +534,7 @@ export default function SurvivalRoom() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 items-center flex-wrap">
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Rodada</p>
                       <p className="text-2xl font-bold text-primary">
@@ -291,6 +547,14 @@ export default function SurvivalRoom() {
                         R$ {roomData.prizePool.toFixed(2)}
                       </p>
                     </div>
+                    <Button
+                      onClick={() => setShowHistory(true)}
+                      variant="outline"
+                      className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      Histórico
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
