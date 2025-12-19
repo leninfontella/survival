@@ -232,7 +232,7 @@ export default function JoinRoom() {
 
     // Buscar sala apenas uma vez ao montar o componente
     fetchRoom();
-  }, [roomId, navigate]);
+  }, [roomId, roomData]);
 
   const handleRefresh = async () => {
     if (!roomId || isRefreshing) return;

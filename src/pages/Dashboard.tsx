@@ -31,6 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
 import { roomAPI, authAPI } from "@/services/api";
+import { AxiosError } from "axios";
 
 const leagueNames = {
   brasil: "🇧🇷 Brasileirão",
@@ -130,12 +131,15 @@ export default function Dashboard() {
         setRooms(rooms.filter((r) => r._id !== roomToDelete));
         setRoomToDelete(null);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao excluir sala:", error);
+      let message = "Não foi possível excluir a sala.";
+      if (error instanceof AxiosError && error.response) {
+        message = error.response.data.message;
+      }
       toast({
         title: "Erro ao excluir sala",
-        description:
-          error.response?.data?.message || "Não foi possível excluir a sala.",
+        description: message,
         variant: "destructive",
       });
     } finally {

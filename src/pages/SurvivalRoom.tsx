@@ -27,6 +27,7 @@ import { roomAPI, authAPI } from "@/services/api";
 import heroBg from "@/assets/hero-bg.jpg";
 import { ShareButton } from "@/components/ui/share-button";
 import { ThemeSelector } from "@/components/ui/theme-selector";
+import { EmojiReactions } from "@/components/ui/emoji-reactions";
 
 interface RoomData {
   _id: string;
@@ -70,6 +71,18 @@ export default function SurvivalRoom() {
     const userId = authAPI.getCurrentUserId();
     setCurrentUserId(userId);
   }, []);
+
+  // Estado para reações (em produção, vir do backend)
+  const [playerReactions, setPlayerReactions] = useState<
+    Record<
+      string,
+      Array<{
+        emoji: string;
+        count: number;
+        users: string[];
+      }>
+    >
+  >({});
 
   // Verificar se o usuário atual é um jogador específico
   const isCurrentUser = useCallback(
@@ -765,47 +778,70 @@ export default function SurvivalRoom() {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 hover:border-primary/40 transition-all"
+                            whileHover={{
+                              scale: 1.02,
+                              x: 8,
+                              transition: { duration: 0.3, ease: "easeOut" },
+                            }}
+                            className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 space-y-3"
                           >
-                            <div className="flex items-center gap-3">
-                              {currentTeam ? (
-                                <div className="w-12 h-12 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center p-1.5 shadow-lg overflow-hidden">
-                                  <img
-                                    src={currentTeam.logo}
-                                    alt={currentTeam.name}
-                                    className="w-full h-full object-contain"
-                                    onError={(e) => {
-                                      const target = e.currentTarget;
-                                      target.style.display = "none";
-                                      const parent = target.parentElement;
-                                      if (parent) {
-                                        parent.innerHTML = `<span class="text-primary font-bold text-lg">${currentTeam.name
-                                          .charAt(0)
-                                          .toUpperCase()}</span>`;
-                                      }
-                                    }}
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
-                                  {player.name.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <div>
-                                <p className="font-semibold text-foreground">
-                                  {player.name}
-                                </p>
-                                {currentRoundSelection && (
-                                  <p className="text-sm text-primary font-medium mt-0.5">
-                                    {currentRoundSelection.teamName}
-                                  </p>
+                            {/* Linha 1: Info do Jogador */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {currentTeam ? (
+                                  <div className="w-12 h-12 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center p-1.5 shadow-lg overflow-hidden">
+                                    <img
+                                      src={currentTeam.logo}
+                                      alt={currentTeam.name}
+                                      className="w-full h-full object-contain"
+                                      onError={(e) => {
+                                        const target = e.currentTarget;
+                                        target.style.display = "none";
+                                        const parent = target.parentElement;
+                                        if (parent) {
+                                          parent.innerHTML = `<span class="text-primary font-bold text-lg">${currentTeam.name
+                                            .charAt(0)
+                                            .toUpperCase()}</span>`;
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
+                                    {player.name.charAt(0).toUpperCase()}
+                                  </div>
                                 )}
+                                <div>
+                                  <p className="font-semibold text-foreground">
+                                    {player.name}
+                                  </p>
+                                  {currentRoundSelection && (
+                                    <p className="text-sm text-primary font-medium mt-0.5">
+                                      {currentRoundSelection.teamName}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
+                              <Badge variant="default" className="bg-green-500">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Confirmado
+                              </Badge>
                             </div>
-                            <Badge variant="default" className="bg-green-500">
-                              <CheckCircle2 className="w-3 h-3 mr-1" />
-                              Confirmado
-                            </Badge>
+
+                            {/* Linha 2: Reações */}
+                            <div className="pl-15">
+                              <EmojiReactions
+                                targetId={player._id}
+                                currentUserId={currentUserId || ""}
+                                reactions={playerReactions[player._id] || []}
+                                onReact={(emoji) => {
+                                  console.log(
+                                    `Reação ${emoji} para jogador ${player.name}`
+                                  );
+                                  // Em produção: chamar API para salvar reação
+                                }}
+                              />
+                            </div>
                           </motion.div>
                         );
                       })
