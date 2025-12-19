@@ -25,6 +25,7 @@ import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { roomAPI, authAPI } from "@/services/api";
 import heroBg from "@/assets/hero-bg.jpg";
+import { ShareButton } from "@/components/ui/share-button";
 
 interface RoomData {
   _id: string;
@@ -547,14 +548,20 @@ export default function SurvivalRoom() {
                         R$ {roomData.prizePool.toFixed(2)}
                       </p>
                     </div>
-                    <Button
-                      onClick={() => setShowHistory(true)}
-                      variant="outline"
-                      className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
-                    >
-                      <History className="mr-2 h-4 w-4" />
-                      Histórico
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setShowHistory(true)}
+                        variant="outline"
+                        className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
+                      >
+                        <History className="mr-2 h-4 w-4" />
+                        Histórico
+                      </Button>
+                      <ShareButton
+                        roomId={roomData._id}
+                        roomName={roomData.name}
+                      />
+                    </div>
                   </div>
                 </div>
               </CardHeader>
