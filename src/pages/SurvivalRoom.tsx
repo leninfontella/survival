@@ -26,6 +26,7 @@ import { toast } from "@/hooks/use-toast";
 import { roomAPI, authAPI } from "@/services/api";
 import heroBg from "@/assets/hero-bg.jpg";
 import { ShareButton } from "@/components/ui/share-button";
+import { ThemeSelector } from "@/components/ui/theme-selector";
 
 interface RoomData {
   _id: string;
@@ -561,6 +562,7 @@ export default function SurvivalRoom() {
                         roomId={roomData._id}
                         roomName={roomData.name}
                       />
+                      <ThemeSelector />
                     </div>
                   </div>
                 </div>
