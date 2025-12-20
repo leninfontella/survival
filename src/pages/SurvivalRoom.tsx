@@ -29,6 +29,7 @@ import { ShareButton } from "@/components/ui/share-button";
 import { ThemeSelector } from "@/components/ui/theme-selector";
 import { EmojiReactions } from "@/components/ui/emoji-reactions";
 import { ConfettiEffect } from "@/components/ui/confetti-effect";
+import { Fireworks } from "@/components/ui/fireworks";
 
 interface RoomData {
   _id: string;
@@ -638,7 +639,6 @@ export default function SurvivalRoom() {
           </AnimatePresence>
 
           {/* Winner Card */}
-          {/* Winner Card */}
           <AnimatePresence>
             {isGameFinished && winner && (
               <motion.div
@@ -652,6 +652,13 @@ export default function SurvivalRoom() {
                   trigger={showWinnerConfetti}
                   type="realistic"
                   duration={5000}
+                />
+
+                {/* Fireworks Effect */}
+                <Fireworks
+                  active={showWinnerConfetti}
+                  count={8}
+                  duration={6000}
                 />
 
                 <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 backdrop-blur-xl shadow-2xl shadow-primary/40 relative overflow-hidden">
