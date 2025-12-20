@@ -1021,6 +1021,74 @@ export default function SurvivalRoom() {
             </motion.div>
           </div>
 
+          {/* Eliminated Players */}
+          {eliminatedPlayers.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="mt-6"
+            >
+              <Card className="bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/30 backdrop-blur-xl shadow-xl">
+                <CardHeader className="border-b border-destructive/20">
+                  <div className="flex items-center gap-2">
+                    <Skull className="h-5 w-5 text-destructive" />
+                    <CardTitle className="text-xl">
+                      Jogadores Eliminados
+                    </CardTitle>
+                    <Badge variant="destructive" className="ml-auto">
+                      {eliminatedPlayers.length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {eliminatedPlayers.map((player, index) => (
+                      <motion.div
+                        key={player._id}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="relative"
+                      >
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-destructive/20 to-destructive/5 border border-destructive/30 opacity-60 grayscale">
+                          <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
+                            <Skull className="w-5 h-5 text-destructive" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-foreground line-through">
+                              {player.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Eliminado na rodada {player.selectedTeams.length}
+                            </p>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="border-destructive/50 text-destructive"
+                          >
+                            Eliminado
+                          </Badge>
+                        </div>
+
+                        {/* Linha riscada */}
+                        <motion.div
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{
+                            delay: index * 0.1 + 0.3,
+                            duration: 0.5,
+                          }}
+                          className="absolute top-1/2 left-0 right-0 h-0.5 bg-destructive origin-left"
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Motivational Banner */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
