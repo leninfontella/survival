@@ -28,6 +28,7 @@ import heroBg from "@/assets/hero-bg.jpg";
 import { ShareButton } from "@/components/ui/share-button";
 import { ThemeSelector } from "@/components/ui/theme-selector";
 import { EmojiReactions } from "@/components/ui/emoji-reactions";
+import { ConfettiEffect } from "@/components/ui/confetti-effect";
 
 interface RoomData {
   _id: string;
@@ -65,6 +66,7 @@ export default function SurvivalRoom() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const isMountedRef = useRef(true);
+  const [showWinnerConfetti, setShowWinnerConfetti] = useState(false);
 
   // Buscar userId ao montar
   useEffect(() => {
@@ -636,34 +638,107 @@ export default function SurvivalRoom() {
           </AnimatePresence>
 
           {/* Winner Card */}
+          {/* Winner Card */}
           <AnimatePresence>
             {isGameFinished && winner && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: -20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
+                onAnimationComplete={() => setShowWinnerConfetti(true)}
               >
-                <Card className="border-primary bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 shadow-2xl shadow-primary/30">
-                  <CardHeader className="text-center space-y-4 py-12">
+                {/* Confetti Effect */}
+                <ConfettiEffect
+                  trigger={showWinnerConfetti}
+                  type="realistic"
+                  duration={5000}
+                />
+
+                <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/20 via-accent/20 to-primary/20 backdrop-blur-xl shadow-2xl shadow-primary/40 relative overflow-hidden">
+                  {/* Partículas brilhantes de fundo */}
+                  <motion.div
+                    className="absolute inset-0 opacity-30"
+                    animate={{
+                      backgroundPosition: ["0% 0%", "100% 100%"],
+                    }}
+                    transition={{
+                      duration: 20,
+                      repeat: Infinity,
+                      repeatType: "reverse",
+                    }}
+                    style={{
+                      backgroundImage: `radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)`,
+                      backgroundSize: "50px 50px",
+                    }}
+                  />
+
+                  <CardHeader className="text-center space-y-4 py-12 relative z-10">
+                    {/* Crown com animação aprimorada */}
                     <motion.div
                       animate={{
                         rotate: [0, 10, -10, 0],
                         scale: [1, 1.1, 1],
+                        y: [0, -10, 0],
                       }}
-                      transition={{ duration: 2, repeat: Infinity }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
                     >
-                      <Crown className="h-24 w-24 text-primary mx-auto" />
+                      <motion.div
+                        animate={{
+                          filter: [
+                            "drop-shadow(0 0 20px hsl(var(--primary)))",
+                            "drop-shadow(0 0 40px hsl(var(--primary)))",
+                            "drop-shadow(0 0 20px hsl(var(--primary)))",
+                          ],
+                        }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <Crown className="h-24 w-24 text-primary mx-auto" />
+                      </motion.div>
                     </motion.div>
+
                     <div>
-                      <h2 className="text-5xl font-black mb-4 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                      {/* Título com animação de brilho */}
+                      <motion.h2
+                        className="text-5xl font-black mb-4 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent"
+                        animate={{
+                          backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                        }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        style={{ backgroundSize: "200% auto" }}
+                      >
                         🎉 VENCEDOR! 🎉
-                      </h2>
-                      <p className="text-3xl font-bold text-foreground">
+                      </motion.h2>
+
+                      {/* Nome do vencedor com entrada dramática */}
+                      <motion.p
+                        className="text-3xl font-bold text-foreground"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                      >
                         {winner.name}
-                      </p>
-                      <p className="text-xl text-muted-foreground mt-4">
-                        Ganhou R$ {roomData.prizePool.toFixed(2)}
-                      </p>
+                      </motion.p>
+
+                      {/* Prêmio com animação de contador */}
+                      <motion.p
+                        className="text-xl text-muted-foreground mt-4"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.5, type: "spring" }}
+                      >
+                        Ganhou{" "}
+                        <motion.span
+                          className="text-2xl font-black text-primary"
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        >
+                          R$ {roomData.prizePool.toFixed(2)}
+                        </motion.span>
+                      </motion.p>
                     </div>
                   </CardHeader>
                 </Card>
