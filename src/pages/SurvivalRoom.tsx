@@ -31,6 +31,7 @@ import { EmojiReactions } from "@/components/ui/emoji-reactions";
 import { ConfettiEffect } from "@/components/ui/confetti-effect";
 import { Fireworks } from "@/components/ui/fireworks";
 import { PageIntro } from "@/components/ui/page-intro";
+import { StateTransition } from "@/components/ui/state-transition";
 
 interface RoomData {
   _id: string;
@@ -573,15 +574,19 @@ export default function SurvivalRoom() {
                     <div className="flex gap-4 items-center flex-wrap">
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground">Rodada</p>
-                        <p className="text-2xl font-bold text-primary">
-                          {roomData.currentRound}/{roomData.totalRounds}
-                        </p>
+                        <StateTransition state={roomData.currentRound}>
+                          <p className="text-2xl font-bold text-primary">
+                            {roomData.currentRound}/{roomData.totalRounds}
+                          </p>
+                        </StateTransition>
                       </div>
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground">Prêmio</p>
-                        <p className="text-2xl font-bold text-primary">
-                          R$ {roomData.prizePool.toFixed(2)}
-                        </p>
+                        <StateTransition state={roomData.prizePool}>
+                          <p className="text-2xl font-bold text-primary">
+                            R$ {roomData.prizePool.toFixed(2)}
+                          </p>
+                        </StateTransition>
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -789,9 +794,11 @@ export default function SurvivalRoom() {
                         <p className="text-sm text-muted-foreground">
                           Total de Jogadores
                         </p>
-                        <p className="text-3xl font-bold text-foreground">
-                          {roomData.players.length}
-                        </p>
+                        <StateTransition state={roomData.players.length}>
+                          <p className="text-3xl font-black text-foreground">
+                            {roomData.players.length}
+                          </p>
+                        </StateTransition>
                       </div>
                       <Users className="h-12 w-12 text-primary opacity-50" />
                     </div>
@@ -811,9 +818,11 @@ export default function SurvivalRoom() {
                         <p className="text-sm text-muted-foreground">
                           Com Time Selecionado
                         </p>
-                        <p className="text-3xl font-bold text-primary">
-                          {playersWithSelection.length}
-                        </p>
+                        <StateTransition state={playersWithSelection.length}>
+                          <p className="text-3xl font-black text-primary">
+                            {playersWithSelection.length}
+                          </p>
+                        </StateTransition>
                       </div>
                       <CheckCircle2 className="h-12 w-12 text-primary opacity-70" />
                     </div>
@@ -833,9 +842,11 @@ export default function SurvivalRoom() {
                         <p className="text-sm text-muted-foreground">
                           Eliminados
                         </p>
-                        <p className="text-3xl font-bold text-destructive">
-                          {eliminatedPlayers.length}
-                        </p>
+                        <StateTransition state={eliminatedPlayers.length}>
+                          <p className="text-3xl font-bold text-destructive">
+                            {eliminatedPlayers.length}
+                          </p>
+                        </StateTransition>
                       </div>
                       <Skull className="h-12 w-12 text-destructive opacity-70" />
                     </div>
