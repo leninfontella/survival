@@ -41,21 +41,7 @@ O sistema implementa automaticamente as seguintes regras de negócio:
 * **Banco de Dados:** MongoDB (via Mongoose).
 * **Segurança:** CORS configurado para integração segura com o frontend.
 * **Arquitetura:** Estrutura de rotas modularizada para Autenticação, Salas e Estatísticas.
-
- 📂 Estrutura do Projeto
-
-├── client/                # Frontend React
-│   ├── src/
-│   │   ├── components/    # Componentes reutilizáveis (Navbar, UI)
-│   │   ├── contexts/      # Context API (GameProvider)
-│   │   ├── pages/         # Páginas (Index, Login, Dashboard, etc)
-│   │   ├── services/      # Integração com API
-│   │   └── App.tsx        # Definição de rotas
-├── server/                # Backend Express
-│   ├── config/            # Conexão com DB
-│   ├── routes/            # Definição de Endpoints (Auth, Rooms, Stats)
-│   └── server.js          # Entrada do servidor
-
+ 
 ## 🔧 Configuração do Ambiente
 
 ### Variáveis de Ambiente (.env)
