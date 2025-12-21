@@ -873,7 +873,7 @@ export default function SurvivalRoom() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-6">
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto overflow-x-hidden pr-2">
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto overflow-x-hidden pr-2 scrollbar-hide">
                       {playersWithSelection.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">
                           Nenhum jogador selecionou time ainda
