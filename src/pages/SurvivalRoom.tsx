@@ -873,7 +873,7 @@ export default function SurvivalRoom() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-6">
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto overflow-x-hidden pr-2">
                       {playersWithSelection.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">
                           Nenhum jogador selecionou time ainda
@@ -896,7 +896,6 @@ export default function SurvivalRoom() {
                               transition={{ delay: index * 0.05 }}
                               whileHover={{
                                 scale: 1.02,
-                                x: 8,
                                 transition: { duration: 0.3, ease: "easeOut" },
                               }}
                               className="p-4 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 space-y-3"
