@@ -56,7 +56,6 @@ O sistema implementa automaticamente as seguintes regras de negócio:
 │   ├── routes/            # Definição de Endpoints (Auth, Rooms, Stats)
 │   └── server.js          # Entrada do servidor
 
-
 ## 🔧 Configuração do Ambiente
 
 ### Variáveis de Ambiente (.env)
