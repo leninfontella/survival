@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/services/api";
-import { Lock, AlertCircle } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
 
 interface LocationState {
   from?: string;
@@ -22,12 +22,10 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Pegar informações do estado (de onde veio)
   const state = location.state as LocationState;
   const redirectPath = state?.from || "/";
   const blockMessage = state?.message;
 
-  // Se já estiver logado, redirecionar
   useEffect(() => {
     if (authAPI.isAuthenticated()) {
       console.log("✅ Já está logado, redirecionando para:", redirectPath);
@@ -35,8 +33,6 @@ const Login = () => {
     }
   }, [navigate, redirectPath]);
 
-  // Mostrar mensagem de bloqueio se existir
-  // Mostrar mensagem de bloqueio se existir
   useEffect(() => {
     if (blockMessage) {
       toast({
@@ -47,7 +43,6 @@ const Login = () => {
     }
   }, [blockMessage, toast]);
 
-  // Detectar tecla ESC para voltar
   useEffect(() => {
     const handleEscKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -74,11 +69,11 @@ const Login = () => {
         description: "Bem-vindo de volta ao Brasileirão Survivor",
       });
 
-      // Pequeno delay para garantir que o token foi salvo
+      // Manter loading por 5 segundos antes de redirecionar
       setTimeout(() => {
         console.log("✅ Redirecionando para:", redirectPath);
         navigate(redirectPath, { replace: true });
-      }, 100);
+      }, 3000);
     } catch (error: unknown) {
       console.error("Erro ao fazer login:", error);
 
@@ -90,43 +85,75 @@ const Login = () => {
           "Verifique suas credenciais e tente novamente.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
 
+  // Loading Overlay
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-background via-background to-accent/10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(10,125,74,0.1),transparent_50%)]" />
+
+        <div className="relative z-10 flex flex-col items-center justify-center space-y-6 px-4">
+          <Loader2 className="w-16 h-16 sm:w-20 sm:h-20 text-primary animate-spin" />
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+              Fazendo o seu login...
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Aguarde!
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-primary animate-pulse"
+                style={{ animationDelay: `${i * 0.2}s` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(10,125,74,0.1),transparent_50%)]" />
 
       <div className="w-full max-w-md relative">
-        <div className="bg-card/50 backdrop-blur-xl border border-primary/20 rounded-2xl p-8 shadow-[0_0_50px_rgba(10,125,74,0.2)]">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-glow mb-2">Login</h1>
-            <p className="text-muted-foreground">
+        <div className="bg-card/50 backdrop-blur-xl border border-primary/20 rounded-xl sm:rounded-2xl p-5 sm:p-6 md:p-8 shadow-[0_0_50px_rgba(10,125,74,0.2)]">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-glow mb-2">
+              Login
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Entre para continuar jogando
             </p>
           </div>
 
           {/* Alerta de sala privada ou acesso bloqueado */}
           {blockMessage && (
-            <Alert className="mb-6 border-amber-500/50 bg-amber-500/10">
-              <Lock className="h-4 w-4 text-amber-500" />
-              <AlertDescription className="text-amber-700 dark:text-amber-400">
-                <strong>
+            <Alert className="mb-4 sm:mb-6 border-amber-500/50 bg-amber-500/10">
+              <Lock className="h-4 w-4 text-amber-500 shrink-0" />
+              <AlertDescription className="text-xs sm:text-sm text-amber-700 dark:text-amber-400">
+                <strong className="block mb-1">
                   {redirectPath.includes("/join-room")
                     ? "🔒 Sala Privada Detectada!"
                     : "⚠️ Acesso Restrito"}
                 </strong>
-                <br />
-                {blockMessage}
+                <span className="text-xs sm:text-sm">{blockMessage}</span>
               </AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm sm:text-base">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -134,14 +161,16 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-background/50 border-primary/30 focus:border-primary"
+                className="bg-background/50 border-primary/30 focus:border-primary text-sm sm:text-base h-10 sm:h-11"
                 disabled={isLoading}
                 autoComplete="email"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-sm sm:text-base">
+                Senha
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -149,7 +178,7 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-background/50 border-primary/30 focus:border-primary"
+                className="bg-background/50 border-primary/30 focus:border-primary text-sm sm:text-base h-10 sm:h-11"
                 disabled={isLoading}
                 autoComplete="current-password"
               />
@@ -157,7 +186,7 @@ const Login = () => {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full text-sm sm:text-base h-10 sm:h-11"
               size="lg"
               disabled={isLoading}
             >
@@ -165,12 +194,12 @@ const Login = () => {
             </Button>
           </form>
 
-          <div className="mt-6 text-center space-y-4">
-            <p className="text-sm text-muted-foreground">
+          <div className="mt-5 sm:mt-6 text-center space-y-3 sm:space-y-4">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Não tem uma conta?{" "}
               <Link
                 to="/cadastro"
-                state={{ from: redirectPath }} // Passar o redirect para o cadastro também
+                state={{ from: redirectPath }}
                 className="text-primary hover:text-glow transition-colors font-semibold"
               >
                 Cadastre-se
@@ -179,11 +208,11 @@ const Login = () => {
 
             {/* Mostrar rota de redirecionamento se não for dashboard */}
             {redirectPath !== "/" && redirectPath !== "/" && (
-              <div className="pt-2 border-t border-border/50">
-                <p className="text-xs text-muted-foreground">
+              <div className="pt-3 border-t border-border/50">
+                <p className="text-xs text-muted-foreground mb-1.5">
                   📍 Você será redirecionado para:
                 </p>
-                <code className="block mt-1 text-xs bg-muted px-3 py-2 rounded text-primary font-mono">
+                <code className="block text-xs bg-muted px-2.5 sm:px-3 py-1.5 sm:py-2 rounded text-primary font-mono break-all">
                   {redirectPath}
                 </code>
               </div>
@@ -191,7 +220,7 @@ const Login = () => {
 
             <Link
               to="/"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors block"
+              className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors block pt-2"
             >
               ← Voltar para home
             </Link>

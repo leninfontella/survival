@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { roomAPI, authAPI } from "@/services/api";
-import { motion, AnimatePresence } from "framer-motion"; // ← ADICIONE ESTA LINHA
+import { motion, AnimatePresence } from "framer-motion";
 
 // Tipos
 interface User {
@@ -73,9 +73,9 @@ interface APIError {
   response?: {
     data?: {
       message?: string;
-      requiresAuth?: boolean; // ← ADICIONAR
-      isPrivate?: boolean; // ← ADICIONAR
-      roomId?: string; // ← ADICIONAR
+      requiresAuth?: boolean;
+      isPrivate?: boolean;
+      roomId?: string;
     };
   };
   message?: string;
@@ -102,8 +102,6 @@ export default function JoinRoom() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [requiresAuth, setRequiresAuth] = useState(false);
 
-  // Buscar dados da sala
-
   useEffect(() => {
     if (!roomId) {
       console.error("❌ RoomId não fornecido na URL");
@@ -121,7 +119,6 @@ export default function JoinRoom() {
         console.log("✅ Resposta da API:", response);
 
         if (response.success && response.data) {
-          // Verificar se precisa de convite (sala privada onde não é membro)
           if (response.needsInvite) {
             console.log("⚠️ Sala privada - precisa de convite");
             setError(
@@ -143,7 +140,6 @@ export default function JoinRoom() {
             room.status
           );
 
-          // Verificar se o usuário já está na sala
           const userId = authAPI.getCurrentUserId();
           console.log("👤 UserId atual:", userId);
 
@@ -172,7 +168,6 @@ export default function JoinRoom() {
               players: room.players.length,
             });
 
-            // 🔥 REDIRECIONAMENTO AUTOMÁTICO QUANDO SALA FICA ATIVA
             if (room.status === "active") {
               if (
                 (!previousStatus && !roomData) ||
@@ -186,7 +181,6 @@ export default function JoinRoom() {
             }
           }
 
-          // Atualizar estado da sala
           setRoomData(room);
         } else {
           console.error("❌ Resposta inválida:", response);
@@ -199,7 +193,6 @@ export default function JoinRoom() {
 
         const errorData = error.response?.data;
 
-        // 🚨 DETECTAR SE REQUER AUTENTICAÇÃO
         if (errorData?.requiresAuth && errorData?.isPrivate) {
           console.log("🔒 SALA PRIVADA - AUTENTICAÇÃO OBRIGATÓRIA");
           setRequiresAuth(true);
@@ -208,7 +201,6 @@ export default function JoinRoom() {
               "Esta sala é privada. Você precisa fazer login para acessar."
           );
 
-          // Mostrar toast
           toast({
             title: "🔒 Sala Privada",
             description: "Faça login para acessar esta sala.",
@@ -230,7 +222,6 @@ export default function JoinRoom() {
       }
     };
 
-    // Buscar sala apenas uma vez ao montar o componente
     fetchRoom();
   }, [roomId, roomData]);
 
@@ -247,7 +238,6 @@ export default function JoinRoom() {
         const room = response.data as RoomData;
         const previousStatus = roomData?.status;
 
-        // Verificar se o usuário já está na sala
         const userId = authAPI.getCurrentUserId();
 
         if (userId && room.players) {
@@ -265,7 +255,6 @@ export default function JoinRoom() {
             setCurrentPlayer(playerInRoom);
           }
 
-          // Verificar se sala ficou ativa
           if (room.status === "active" && previousStatus === "waiting") {
             console.log("🚀 Sala ativa detectada! Mostrando modal...");
             setShowStartingModal(true);
@@ -335,7 +324,6 @@ export default function JoinRoom() {
             "Você entrou na sala. Clique em 'Estou Pronto' para iniciar!",
         });
 
-        // Atualizar dados da sala
         const updatedRoom = await roomAPI.getById(roomId);
         if (updatedRoom.success) {
           setRoomData(updatedRoom.data as RoomData);
@@ -379,12 +367,10 @@ export default function JoinRoom() {
             : "Clique novamente quando estiver pronto",
         });
 
-        // Atualizar sala
         if (response.data.room) {
           setRoomData(response.data.room as RoomData);
         }
 
-        // Se todos estão prontos, a sala será iniciada automaticamente
         if (response.data.allReady) {
           console.log("🎉 TODOS PRONTOS! A sala será iniciada...");
           setShowStartingModal(true);
@@ -422,55 +408,50 @@ export default function JoinRoom() {
     });
   };
 
-  // Componente do Modal de Início
+  // Modal de Início - MOBILE FIRST
   const StartingGameModal = () => (
     <AnimatePresence>
       {showStartingModal && (
         <>
-          {/* Overlay com blur */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50"
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50"
           />
 
-          {/* Modal */}
           <motion.div
-            initial={{ scale: 0.5, opacity: 0, rotateX: -15 }}
-            animate={{ scale: 1, opacity: 1, rotateX: 0 }}
-            exit={{ scale: 0.8, opacity: 0, rotateX: 15 }}
+            initial={{ scale: 0.8, opacity: 0, y: 50 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 30 }}
             transition={{
               type: "spring",
-              duration: 0.6,
+              duration: 0.5,
               bounce: 0.3,
             }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
-            style={{ perspective: "1000px" }}
+            className="fixed inset-0 flex items-center justify-center z-50 p-3"
           >
-            <div className="relative max-w-lg w-full">
-              {/* Efeitos de luz de fundo */}
+            <div className="relative w-full max-w-sm">
               <motion.div
                 animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.3, 0.6, 0.3],
+                  scale: [1, 1.1, 1],
+                  opacity: [0.3, 0.5, 0.3],
                 }}
                 transition={{
                   duration: 2,
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
-                className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 rounded-3xl blur-3xl"
+                className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 rounded-2xl blur-2xl"
               />
 
-              {/* Card principal */}
               <motion.div
-                className="relative bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-purple-500/30"
+                className="relative bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/30"
                 animate={{
                   boxShadow: [
-                    "0 0 40px rgba(168, 85, 247, 0.4)",
-                    "0 0 80px rgba(236, 72, 153, 0.6)",
-                    "0 0 40px rgba(168, 85, 247, 0.4)",
+                    "0 0 30px rgba(168, 85, 247, 0.4)",
+                    "0 0 50px rgba(236, 72, 153, 0.6)",
+                    "0 0 30px rgba(168, 85, 247, 0.4)",
                   ],
                 }}
                 transition={{
@@ -479,19 +460,18 @@ export default function JoinRoom() {
                   ease: "easeInOut",
                 }}
               >
-                {/* Partículas flutuantes */}
                 <div className="absolute inset-0 overflow-hidden">
-                  {[...Array(20)].map((_, i) => (
+                  {[...Array(15)].map((_, i) => (
                     <motion.div
                       key={i}
                       className="absolute w-1 h-1 bg-white rounded-full"
                       initial={{
-                        x: Math.random() * 400,
-                        y: Math.random() * 600,
+                        x: Math.random() * 300,
+                        y: Math.random() * 500,
                         opacity: 0,
                       }}
                       animate={{
-                        y: [null, -100],
+                        y: [null, -80],
                         opacity: [0, 1, 0],
                       }}
                       transition={{
@@ -504,11 +484,9 @@ export default function JoinRoom() {
                   ))}
                 </div>
 
-                {/* Conteúdo */}
-                <div className="relative p-12 text-center space-y-8">
-                  {/* Ícone principal */}
+                <div className="relative p-6 text-center space-y-6">
                   <motion.div
-                    className="relative mx-auto w-32 h-32 flex items-center justify-center"
+                    className="relative mx-auto w-20 h-20 flex items-center justify-center"
                     animate={{
                       rotate: [0, 360],
                     }}
@@ -518,7 +496,6 @@ export default function JoinRoom() {
                       ease: "linear",
                     }}
                   >
-                    {/* Círculos orbitais */}
                     <motion.div
                       className="absolute inset-0 rounded-full border-2 border-purple-500/30"
                       animate={{
@@ -532,9 +509,8 @@ export default function JoinRoom() {
                       }}
                     />
 
-                    {/* Ícone central */}
                     <motion.div
-                      className="relative bg-gradient-to-br from-purple-500 to-pink-500 p-6 rounded-full shadow-2xl"
+                      className="relative bg-gradient-to-br from-purple-500 to-pink-500 p-4 rounded-full shadow-2xl"
                       animate={{
                         scale: [1, 1.05, 1],
                       }}
@@ -544,18 +520,17 @@ export default function JoinRoom() {
                         ease: "easeInOut",
                       }}
                     >
-                      <Play className="w-16 h-16 text-white" />
+                      <Play className="w-10 h-10 text-white" />
                     </motion.div>
 
-                    {/* Sparkles ao redor */}
-                    {[0, 60, 120, 180, 240, 300].map((angle, i) => (
+                    {[0, 90, 180, 270].map((angle, i) => (
                       <motion.div
                         key={angle}
                         className="absolute"
                         style={{
                           left: "50%",
                           top: "50%",
-                          transform: `rotate(${angle}deg) translateY(-80px)`,
+                          transform: `rotate(${angle}deg) translateY(-50px)`,
                         }}
                         animate={{
                           scale: [0, 1, 0],
@@ -564,24 +539,23 @@ export default function JoinRoom() {
                         transition={{
                           duration: 1.5,
                           repeat: Infinity,
-                          delay: i * 0.2,
+                          delay: i * 0.3,
                           ease: "easeOut",
                         }}
                       >
-                        <Zap className="w-6 h-6 text-yellow-400" />
+                        <Zap className="w-4 h-4 text-yellow-400" />
                       </motion.div>
                     ))}
                   </motion.div>
 
-                  {/* Título */}
                   <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="space-y-3"
+                    className="space-y-2"
                   >
                     <motion.h2
-                      className="text-5xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent"
+                      className="text-3xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-yellow-400 bg-clip-text text-transparent"
                       animate={{
                         backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
                       }}
@@ -594,11 +568,11 @@ export default function JoinRoom() {
                         backgroundSize: "200% 200%",
                       }}
                     >
-                      🎉 SALA INICIADA! 🎉
+                      🎉 INICIADO! 🎉
                     </motion.h2>
 
                     <motion.p
-                      className="text-xl text-purple-200 font-semibold"
+                      className="text-base text-purple-200 font-semibold px-2"
                       animate={{
                         opacity: [0.7, 1, 0.7],
                       }}
@@ -608,28 +582,23 @@ export default function JoinRoom() {
                         ease: "easeInOut",
                       }}
                     >
-                      A competição está começando agora!
+                      A competição começou!
                     </motion.p>
                   </motion.div>
 
-                  {/* Mensagem */}
                   <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="space-y-4"
+                    className="space-y-3"
                   >
-                    <div className="flex items-center justify-center gap-3 text-white/80">
-                      <Zap className="w-5 h-5 text-yellow-400" />
-                      <p className="text-lg">
-                        Clique no botão abaixo para entrar na sala de
-                        sobrevivência
-                      </p>
-                      <Zap className="w-5 h-5 text-yellow-400" />
+                    <div className="flex items-center justify-center gap-2 text-white/80 text-sm px-4">
+                      <Zap className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                      <p>Entre na sala de sobrevivência</p>
+                      <Zap className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                     </div>
                   </motion.div>
 
-                  {/* Badge de prêmio */}
                   <motion.div
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
@@ -639,16 +608,15 @@ export default function JoinRoom() {
                       stiffness: 200,
                       damping: 10,
                     }}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-full"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-full text-sm"
                   >
-                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <Trophy className="w-4 h-4 text-yellow-400" />
                     <span className="text-yellow-200 font-bold">
-                      Boa sorte, campeão!
+                      Boa sorte!
                     </span>
-                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <Trophy className="w-4 h-4 text-yellow-400" />
                   </motion.div>
 
-                  {/* Botão de Ação */}
                   <motion.div
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -656,14 +624,14 @@ export default function JoinRoom() {
                   >
                     <motion.button
                       onClick={() => navigate(`/survival-room/${roomId}`)}
-                      className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-white text-lg shadow-2xl overflow-hidden"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      className="group relative w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-white shadow-2xl overflow-hidden"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       animate={{
                         boxShadow: [
-                          "0 0 20px rgba(168, 85, 247, 0.5)",
-                          "0 0 40px rgba(236, 72, 153, 0.7)",
-                          "0 0 20px rgba(168, 85, 247, 0.5)",
+                          "0 0 15px rgba(168, 85, 247, 0.5)",
+                          "0 0 30px rgba(236, 72, 153, 0.7)",
+                          "0 0 15px rgba(168, 85, 247, 0.5)",
                         ],
                       }}
                       transition={{
@@ -674,7 +642,6 @@ export default function JoinRoom() {
                         },
                       }}
                     >
-                      {/* Efeito de brilho ao passar o mouse */}
                       <motion.div
                         className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
                         initial={{ x: "-100%" }}
@@ -686,10 +653,10 @@ export default function JoinRoom() {
                         }}
                       />
 
-                      <span className="relative flex items-center gap-3">
-                        <Play className="w-6 h-6" />
-                        Ir para Sala de Sobrevivência
-                        <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                      <span className="relative flex items-center justify-center gap-2 text-sm">
+                        <Play className="w-5 h-5" />
+                        Ir para Sala
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </span>
                     </motion.button>
                   </motion.div>
@@ -702,62 +669,58 @@ export default function JoinRoom() {
     </AnimatePresence>
   );
 
-  // Loading state
+  // Loading state - MOBILE FIRST
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
-        <Card className="max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center p-3">
+        <Card className="w-full max-w-sm">
           <CardContent className="pt-6 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Carregando sala...</p>
-            <p className="text-xs text-muted-foreground mt-2">ID: {roomId}</p>
+            <p className="text-muted-foreground text-sm">Carregando sala...</p>
+            <p className="text-xs text-muted-foreground mt-2 break-all px-2">
+              ID: {roomId}
+            </p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // 🚨 TELA DE BLOQUEIO - REQUER LOGIN
+  // Tela de bloqueio - MOBILE FIRST
   if (requiresAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full border-amber-500/50 bg-amber-500/5">
-          <CardContent className="pt-8 text-center space-y-6">
-            {/* Ícone de bloqueio animado */}
-            <div className="relative mx-auto w-24 h-24">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center p-3">
+        <Card className="w-full max-w-sm border-amber-500/50 bg-amber-500/5">
+          <CardContent className="pt-6 text-center space-y-4">
+            <div className="relative mx-auto w-16 h-16">
               <div className="absolute inset-0 bg-amber-500/20 rounded-full animate-ping" />
-              <div className="relative bg-gradient-to-br from-amber-500 to-orange-500 p-6 rounded-full shadow-2xl">
-                <Lock className="w-12 h-12 text-white" />
+              <div className="relative bg-gradient-to-br from-amber-500 to-orange-500 p-4 rounded-full shadow-2xl">
+                <Lock className="w-8 h-8 text-white" />
               </div>
             </div>
 
-            {/* Título */}
             <div>
-              <h2 className="text-3xl font-bold text-amber-600 mb-2">
+              <h2 className="text-2xl font-bold text-amber-600 mb-2">
                 🔒 Sala Privada
               </h2>
-              <p className="text-lg text-muted-foreground">{error}</p>
+              <p className="text-sm text-muted-foreground px-2">{error}</p>
             </div>
 
-            {/* Mensagem explicativa */}
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-              <p className="text-sm text-amber-700 dark:text-amber-400">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+              <p className="text-xs text-amber-700 dark:text-amber-400">
                 <strong>⚠️ Acesso Restrito</strong>
                 <br />
-                Esta sala requer que você faça login para acessar. Você receberá
-                um link de convite privado após autenticar.
+                Faça login para acessar esta sala privada.
               </p>
             </div>
 
-            {/* Informações da sala */}
             {roomId && (
-              <div className="text-xs text-muted-foreground font-mono bg-muted p-3 rounded">
-                ID da Sala: {roomId}
+              <div className="text-xs text-muted-foreground font-mono bg-muted p-2 rounded break-all">
+                {roomId}
               </div>
             )}
 
-            {/* Botões de ação */}
-            <div className="flex flex-col gap-3 pt-4">
+            <div className="flex flex-col gap-2 pt-2">
               <Button
                 onClick={() =>
                   navigate("/login", {
@@ -769,20 +732,24 @@ export default function JoinRoom() {
                   })
                 }
                 size="lg"
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-sm"
               >
-                <LogIn className="mr-2 h-5 w-5" />
-                Fazer Login para Continuar
+                <LogIn className="mr-2 h-4 w-4" />
+                Fazer Login
               </Button>
 
-              <Button variant="outline" onClick={() => navigate("/register")}>
-                Não tem conta? Cadastre-se
+              <Button
+                variant="outline"
+                onClick={() => navigate("/register")}
+                className="text-sm"
+              >
+                Cadastre-se
               </Button>
 
               <Link to="/dashboard">
-                <Button variant="ghost" className="w-full">
+                <Button variant="ghost" className="w-full text-sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Voltar ao Dashboard
+                  Voltar
                 </Button>
               </Link>
             </div>
@@ -792,45 +759,43 @@ export default function JoinRoom() {
     );
   }
 
-  // Error state
+  // Error state - MOBILE FIRST
   if (error || !roomData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card p-3">
+        <div className="container mx-auto max-w-sm">
           <Link to="/dashboard">
-            <Button variant="ghost" className="mb-6">
+            <Button variant="ghost" className="mb-4 text-sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar ao Dashboard
+              Voltar
             </Button>
           </Link>
 
-          <Card className="max-w-md mx-auto border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6 text-center space-y-4">
-              <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+              <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
               <div>
-                <h3 className="font-semibold text-lg mb-2">
+                <h3 className="font-semibold text-base mb-2">
                   {error?.includes("privada")
                     ? "🔒 Sala Privada"
                     : "Sala não encontrada"}
                 </h3>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted-foreground text-sm px-2">
                   {error || "A sala não existe ou foi removida."}
                 </p>
                 {error?.includes("privada") && (
-                  <div className="mt-4 p-3 bg-amber-500/10 rounded-md border border-amber-500/30">
+                  <div className="mt-3 p-2 bg-amber-500/10 rounded-md border border-amber-500/30">
                     <p className="text-xs text-amber-700">
-                      💡 <strong>Dica:</strong> Se você tem um link de convite,
-                      verifique se está logado com a conta correta ou entre em
-                      contato com o criador da sala.
+                      💡 Verifique se está logado com a conta correta.
                     </p>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground mt-2">
-                  ID: {roomId}
+                <p className="text-xs text-muted-foreground mt-2 break-all">
+                  {roomId}
                 </p>
               </div>
-              <Link to="/dashboard">
-                <Button>Voltar ao Dashboard</Button>
+              <Link to="/dashboard" className="block">
+                <Button className="w-full text-sm">Voltar</Button>
               </Link>
             </CardContent>
           </Card>
@@ -847,148 +812,141 @@ export default function JoinRoom() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 py-4 max-w-2xl">
         <Link to="/dashboard">
-          <Button variant="ghost" className="mb-6">
+          <Button variant="ghost" className="mb-4 text-sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar ao Dashboard
+            Voltar
           </Button>
         </Link>
 
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header da Sala */}
+        <div className="space-y-3">
+          {/* Header Mobile */}
           <Card className="border-primary/30 bg-card/50 backdrop-blur">
-            <CardHeader>
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                      {roomData.name}
-                    </CardTitle>
-                    {/* 🔄 BOTÃO DE REFRESH - ADICIONE AQUI */}
-                    <button
-                      onClick={handleRefresh}
-                      disabled={isRefreshing}
-                      className="group relative w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/30 hover:border-primary/50 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Atualizar dados da sala"
-                    >
-                      <RefreshCw
-                        className={`w-5 h-5 text-primary transition-transform duration-500 ${
-                          isRefreshing
-                            ? "animate-spin"
-                            : "group-hover:rotate-180"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <Badge variant="secondary">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {roomData.status === "waiting"
-                        ? "Aguardando Jogadores"
-                        : "Em Andamento"}
-                    </Badge>
-                    {currentPlayer?.isReady && (
-                      <Badge variant="default" className="bg-green-500">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Pronto
-                      </Badge>
-                    )}
-                  </div>
+            <CardHeader className="pb-3">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
+                    {roomData.name}
+                  </CardTitle>
+                  <button
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/30 transition-all flex items-center justify-center disabled:opacity-50"
+                    title="Atualizar"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 text-primary transition-transform ${
+                        isRefreshing ? "animate-spin" : ""
+                      }`}
+                    />
+                  </button>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">
+
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    <Clock className="w-3 h-3 mr-1" />
+                    {roomData.status === "waiting" ? "Aguardando" : "Ativo"}
+                  </Badge>
+                  {currentPlayer?.isReady && (
+                    <Badge variant="default" className="bg-green-500 text-xs">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Pronto
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="bg-primary/10 rounded-lg p-3 text-center">
+                  <div className="text-xs text-muted-foreground mb-1">
                     Prêmio Total
                   </div>
-                  <div className="text-3xl font-bold text-primary">
+                  <div className="text-2xl font-bold text-primary">
                     R$ {roomData.prizePool.toFixed(2)}
                   </div>
                 </div>
               </div>
             </CardHeader>
           </Card>
-          {/* Informações da Sala */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          {/* Stats Mobile - Grid 3 colunas compactas */}
+          <div className="grid grid-cols-3 gap-2">
             <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Users className="h-8 w-8 text-primary" />
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {totalPlayers}/{roomData.minPlayers}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Jogadores
-                    </div>
+              <CardContent className="p-3">
+                <div className="text-center space-y-1">
+                  <Users className="h-6 w-6 text-primary mx-auto" />
+                  <div className="text-lg font-bold">
+                    {totalPlayers}/{roomData.minPlayers}
                   </div>
+                  <div className="text-xs text-muted-foreground">Jogadores</div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-8 w-8 text-green-500" />
-                  <div>
-                    <div className="text-2xl font-bold text-green-500">
-                      {readyPlayers}/{totalPlayers}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Prontos</div>
+              <CardContent className="p-3">
+                <div className="text-center space-y-1">
+                  <CheckCircle2 className="h-6 w-6 text-green-500 mx-auto" />
+                  <div className="text-lg font-bold text-green-500">
+                    {readyPlayers}/{totalPlayers}
                   </div>
+                  <div className="text-xs text-muted-foreground">Prontos</div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <Play className="h-8 w-8 text-glow" />
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {roomData.totalRounds}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Rodadas</div>
+              <CardContent className="p-3">
+                <div className="text-center space-y-1">
+                  <Play className="h-6 w-6 text-glow mx-auto" />
+                  <div className="text-lg font-bold">
+                    {roomData.totalRounds}
                   </div>
+                  <div className="text-xs text-muted-foreground">Rodadas</div>
                 </div>
               </CardContent>
             </Card>
           </div>
-          {/* Link de Compartilhamento */}
+
+          {/* Link Compartilhar */}
           {hasJoined && (
             <Card className="border-primary/50 bg-primary/5">
-              <CardContent className="pt-6">
-                <Label className="mb-2 block">Link de Compartilhamento</Label>
+              <CardContent className="pt-3 pb-3">
+                <Label className="mb-2 block text-xs">Compartilhar</Label>
                 <div className="flex gap-2">
                   <Input
                     value={shareLink}
                     readOnly
-                    className="font-mono text-sm"
+                    className="font-mono text-xs h-9"
                   />
-                  <Button onClick={handleCopyLink} variant="outline">
+                  <Button
+                    onClick={handleCopyLink}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3"
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Compartilhe este link com os jogadores
-                </p>
               </CardContent>
             </Card>
           )}
-          {/* Formulário de Entrada ou Status */}
+
+          {/* Formulário ou Status - MOBILE */}
           {!hasJoined ? (
-            // Jogador que ainda não entrou - mostrar formulário
             <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Entrar na Sala</CardTitle>
-                <CardDescription>
-                  Preencha seus dados para participar
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Entrar na Sala</CardTitle>
+                <CardDescription className="text-xs">
+                  Preencha para participar
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {!showPayment ? (
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Seu Nome</Label>
+                      <Label htmlFor="name" className="text-sm">
+                        Seu Nome
+                      </Label>
                       <Input
                         id="name"
                         value={formData.name}
@@ -997,88 +955,91 @@ export default function JoinRoom() {
                         }
                         placeholder="Digite seu nome"
                         required
+                        className="h-10"
                       />
                     </div>
 
-                    <div className="p-4 rounded-lg bg-accent/10 border border-accent/20">
+                    <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <DollarSign className="h-5 w-5 text-accent" />
-                          <span className="font-semibold">Total a Pagar</span>
+                          <DollarSign className="h-4 w-4 text-accent" />
+                          <span className="font-semibold text-sm">Total</span>
                         </div>
-                        <span className="text-2xl font-bold text-accent">
+                        <span className="text-xl font-bold text-accent">
                           R$ {totalPrice.toFixed(2)}
                         </span>
                       </div>
                     </div>
 
-                    <Button type="submit" className="w-full" size="lg">
+                    <Button type="submit" className="w-full h-11" size="lg">
                       <Users className="mr-2 h-5 w-5" />
                       Confirmar Entrada
                     </Button>
                   </form>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     <div className="text-center">
-                      <h3 className="text-xl font-bold mb-2">
-                        Pagamento via PIX
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Escaneie o QR Code ou copie o código PIX
+                      <h3 className="text-lg font-bold mb-1">Pagamento PIX</h3>
+                      <p className="text-muted-foreground text-xs">
+                        Escaneie o QR Code ou copie
                       </p>
                     </div>
 
-                    <div className="p-6 rounded-lg bg-accent/10 border border-accent/20 text-center">
-                      <div className="flex justify-center mb-4">
-                        <div className="w-48 h-48 bg-white p-4 rounded-lg flex items-center justify-center">
+                    <div className="p-4 rounded-lg bg-accent/10 border border-accent/20 text-center">
+                      <div className="flex justify-center mb-3">
+                        <div className="w-40 h-40 bg-white p-3 rounded-lg flex items-center justify-center">
                           <QrCode className="w-full h-full text-foreground" />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <p className="font-semibold">
-                          Valor: R$ {totalPrice.toFixed(2)}
+                      <div className="space-y-1">
+                        <p className="font-semibold text-sm">
+                          R$ {totalPrice.toFixed(2)}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          Nome: {formData.name}
+                        <p className="text-xs text-muted-foreground">
+                          {formData.name}
                         </p>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <Label>Código PIX Copia e Cola</Label>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Código PIX</Label>
                       <div className="flex gap-2">
                         <Input
                           value={pixCode}
                           readOnly
-                          className="font-mono text-xs"
+                          className="font-mono text-xs h-9"
                         />
-                        <Button onClick={handleCopyPix} variant="outline">
+                        <Button
+                          onClick={handleCopyPix}
+                          variant="outline"
+                          size="sm"
+                          className="h-9 px-3"
+                        >
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-2">
                       <Button
                         onClick={() => setShowPayment(false)}
                         variant="outline"
-                        className="flex-1"
+                        className="flex-1 h-10"
                       >
                         Voltar
                       </Button>
                       <Button
                         onClick={handlePaymentConfirm}
-                        className="flex-1"
-                        size="lg"
+                        className="flex-1 h-10"
                         disabled={isJoining}
                       >
                         {isJoining ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Confirmando...
+                            <span className="text-sm">Confirmando...</span>
                           </>
                         ) : (
-                          "Confirmar Pagamento"
+                          <span className="text-sm">Confirmar</span>
                         )}
                       </Button>
                     </div>
@@ -1087,7 +1048,6 @@ export default function JoinRoom() {
               </CardContent>
             </Card>
           ) : roomData.status === "waiting" ? (
-            // Jogador já entrou e sala ainda aguardando
             <Card
               className={`border-2 ${
                 allReady
@@ -1095,58 +1055,58 @@ export default function JoinRoom() {
                   : "border-accent/50 bg-accent/5"
               }`}
             >
-              <CardContent className="pt-6">
-                <div className="text-center space-y-4">
+              <CardContent className="pt-4 pb-4">
+                <div className="text-center space-y-3">
                   {!canStart ? (
                     <>
-                      <p className="text-muted-foreground text-lg">
+                      <p className="text-muted-foreground text-sm">
                         Aguardando mais {roomData.minPlayers - totalPlayers}{" "}
                         jogador(es)...
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        Compartilhe o link da sala para convidar amigos!
+                      <p className="text-xs text-muted-foreground">
+                        Compartilhe o link!
                       </p>
                     </>
                   ) : allReady ? (
                     <>
-                      <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto animate-pulse" />
-                      <h3 className="text-2xl font-bold text-green-500">
+                      <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto animate-pulse" />
+                      <h3 className="text-xl font-bold text-green-500">
                         🎉 Todos Prontos!
                       </h3>
-                      <p className="text-muted-foreground">
-                        A competição está começando...
+                      <p className="text-muted-foreground text-sm">
+                        Começando...
                       </p>
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center justify-center gap-4 mb-4">
+                      <div className="flex items-center justify-center mb-3">
                         <div
-                          className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                          className={`w-14 h-14 rounded-full flex items-center justify-center ${
                             currentPlayer?.isReady
                               ? "bg-green-500"
                               : "bg-amber-500"
                           }`}
                         >
                           {currentPlayer?.isReady ? (
-                            <CheckCircle2 className="h-8 w-8 text-white" />
+                            <CheckCircle2 className="h-7 w-7 text-white" />
                           ) : (
-                            <XCircle className="h-8 w-8 text-white" />
+                            <XCircle className="h-7 w-7 text-white" />
                           )}
                         </div>
                       </div>
-                      <p className="text-lg font-semibold mb-2">
+                      <p className="text-base font-semibold">
                         {currentPlayer?.isReady
                           ? "Você está pronto!"
-                          : "Clique no botão quando estiver pronto"}
+                          : "Pronto para começar?"}
                       </p>
-                      <p className="text-muted-foreground mb-4">
-                        {readyPlayers}/{totalPlayers} jogadores prontos
+                      <p className="text-muted-foreground text-sm">
+                        {readyPlayers}/{totalPlayers} prontos
                       </p>
                       <Button
                         onClick={handleToggleReady}
                         disabled={isTogglingReady}
                         size="lg"
-                        className="w-full md:w-auto"
+                        className="w-full h-11"
                         variant={currentPlayer?.isReady ? "outline" : "default"}
                       >
                         {isTogglingReady ? (
@@ -1157,7 +1117,7 @@ export default function JoinRoom() {
                         ) : currentPlayer?.isReady ? (
                           <>
                             <XCircle className="mr-2 h-5 w-5" />
-                            Cancelar Ready
+                            Cancelar
                           </>
                         ) : (
                           <>
@@ -1167,9 +1127,8 @@ export default function JoinRoom() {
                         )}
                       </Button>
                       {canStart && (
-                        <p className="text-sm text-primary mt-4">
-                          ⏳ Aguardando todos os jogadores ficarem prontos para
-                          iniciar...
+                        <p className="text-xs text-primary mt-2">
+                          ⏳ Aguardando todos ficarem prontos...
                         </p>
                       )}
                     </>
@@ -1178,33 +1137,40 @@ export default function JoinRoom() {
               </CardContent>
             </Card>
           ) : null}
-          {/* Lista de Jogadores */}
+
+          {/* Lista de Jogadores - MOBILE */}
           <Card className="border-border/50 bg-card/50 backdrop-blur">
-            <CardHeader>
-              <CardTitle>Jogadores na Sala</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                Jogadores ({roomData.players.length})
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {roomData.players.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Nenhum jogador inscrito ainda
+                  <p className="text-center text-muted-foreground py-6 text-sm">
+                    Nenhum jogador ainda
                   </p>
                 ) : (
                   roomData.players.map((player: Player, index: number) => (
                     <div
                       key={player._id}
-                      className="flex justify-between items-center p-3 rounded-lg bg-background/50"
+                      className="flex justify-between items-center p-2 rounded-lg bg-background/50"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm">
                           {index + 1}
                         </div>
-                        <span>{player.name}</span>
+                        <span className="text-sm font-medium truncate max-w-[150px]">
+                          {player.name}
+                        </span>
                       </div>
                       {roomData.status === "waiting" && (
                         <Badge
                           variant={player.isReady ? "default" : "secondary"}
-                          className={player.isReady ? "bg-green-500" : ""}
+                          className={`${
+                            player.isReady ? "bg-green-500" : ""
+                          } text-xs`}
                         >
                           {player.isReady ? (
                             <>
@@ -1225,9 +1191,9 @@ export default function JoinRoom() {
               </div>
             </CardContent>
           </Card>
-          <StartingGameModal /> {/* ← ADICIONE ESTA LINHA */}
         </div>
       </div>
+      <StartingGameModal />
     </div>
   );
 }

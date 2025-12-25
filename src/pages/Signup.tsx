@@ -121,43 +121,47 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(10,125,74,0.1),transparent_50%)]" />
 
       <div className="w-full max-w-md relative">
-        <div className="bg-card/50 backdrop-blur-xl border border-primary/20 rounded-2xl p-8 shadow-[0_0_50px_rgba(10,125,74,0.2)]">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-glow mb-2">Cadastro</h1>
-            <p className="text-muted-foreground">
+        <div className="bg-card/50 backdrop-blur-xl border border-primary/20 rounded-xl sm:rounded-2xl p-5 sm:p-6 md:p-8 shadow-[0_0_50px_rgba(10,125,74,0.2)]">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-glow mb-2">
+              Cadastro
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Crie sua conta e comece a jogar
             </p>
 
             {/* Progress Indicator */}
-            <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-4 sm:mt-6">
               {[1, 2, 3].map((step) => (
                 <div
                   key={step}
-                  className={`h-2 rounded-full transition-all duration-300 ${
+                  className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
                     step === currentStep
-                      ? "w-12 bg-primary"
+                      ? "w-10 sm:w-12 bg-primary"
                       : step < currentStep
-                      ? "w-8 bg-primary/50"
-                      : "w-8 bg-muted"
+                      ? "w-6 sm:w-8 bg-primary/50"
+                      : "w-6 sm:w-8 bg-muted"
                   }`}
                 />
               ))}
             </div>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-2">
               Etapa {currentStep} de {totalSteps}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Step 1: Nome */}
             {currentStep === 1 && (
-              <div className="space-y-4 animate-fade-in">
+              <div className="space-y-3 sm:space-y-4 animate-fade-in">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome completo</Label>
+                  <Label htmlFor="name" className="text-sm sm:text-base">
+                    Nome completo
+                  </Label>
                   <Input
                     id="name"
                     type="text"
@@ -165,14 +169,14 @@ const Signup = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="bg-background/50 border-primary/30 focus:border-primary"
+                    className="bg-background/50 border-primary/30 focus:border-primary text-sm sm:text-base h-10 sm:h-11"
                     autoFocus
                   />
                 </div>
                 <Button
                   type="button"
                   onClick={handleNext}
-                  className="w-full"
+                  className="w-full text-sm sm:text-base h-10 sm:h-11"
                   size="lg"
                 >
                   Próximo
@@ -183,9 +187,11 @@ const Signup = () => {
 
             {/* Step 2: Email */}
             {currentStep === 2 && (
-              <div className="space-y-4 animate-fade-in">
+              <div className="space-y-3 sm:space-y-4 animate-fade-in">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-sm sm:text-base">
+                    Email
+                  </Label>
                   <Input
                     id="email"
                     type="email"
@@ -193,28 +199,30 @@ const Signup = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="bg-background/50 border-primary/30 focus:border-primary"
+                    className="bg-background/50 border-primary/30 focus:border-primary text-sm sm:text-base h-10 sm:h-11"
                     autoFocus
                   />
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <Button
                     type="button"
                     onClick={handleBack}
                     variant="outline"
                     size="lg"
-                    className="w-full"
+                    className="w-full text-sm sm:text-base h-10 sm:h-11"
                   >
                     <ChevronLeft className="w-4 h-4 mr-2" />
-                    Voltar
+                    <span className="hidden sm:inline">Voltar</span>
+                    <span className="sm:hidden">Voltar</span>
                   </Button>
                   <Button
                     type="button"
                     onClick={handleNext}
-                    className="w-full"
+                    className="w-full text-sm sm:text-base h-10 sm:h-11"
                     size="lg"
                   >
-                    Próximo
+                    <span className="hidden sm:inline">Próximo</span>
+                    <span className="sm:hidden">Avançar</span>
                     <ChevronRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
@@ -223,9 +231,11 @@ const Signup = () => {
 
             {/* Step 3: Senha */}
             {currentStep === 3 && (
-              <div className="space-y-4 animate-fade-in">
+              <div className="space-y-3 sm:space-y-4 animate-fade-in">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password" className="text-sm sm:text-base">
+                    Senha
+                  </Label>
                   <Input
                     id="password"
                     type="password"
@@ -233,14 +243,19 @@ const Signup = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     minLength={6}
-                    className="bg-background/50 border-primary/30 focus:border-primary"
+                    className="bg-background/50 border-primary/30 focus:border-primary text-sm sm:text-base h-10 sm:h-11"
                     autoFocus
                     disabled={isLoading}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                  <Label
+                    htmlFor="confirmPassword"
+                    className="text-sm sm:text-base"
+                  >
+                    Confirmar senha
+                  </Label>
                   <Input
                     id="confirmPassword"
                     type="password"
@@ -248,38 +263,48 @@ const Signup = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     minLength={6}
-                    className="bg-background/50 border-primary/30 focus:border-primary"
+                    className="bg-background/50 border-primary/30 focus:border-primary text-sm sm:text-base h-10 sm:h-11"
                     disabled={isLoading}
                   />
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <Button
                     type="button"
                     onClick={handleBack}
                     variant="outline"
                     size="lg"
-                    className="w-full"
+                    className="w-full text-sm sm:text-base h-10 sm:h-11"
                     disabled={isLoading}
                   >
                     <ChevronLeft className="w-4 h-4 mr-2" />
-                    Voltar
+                    <span className="hidden sm:inline">Voltar</span>
+                    <span className="sm:hidden">Voltar</span>
                   </Button>
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full text-sm sm:text-base h-10 sm:h-11"
                     size="lg"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Criando conta..." : "Criar conta"}
+                    {isLoading ? (
+                      <span className="hidden sm:inline">Criando conta...</span>
+                    ) : (
+                      <span className="hidden sm:inline">Criar conta</span>
+                    )}
+                    {isLoading ? (
+                      <span className="sm:hidden">Criando...</span>
+                    ) : (
+                      <span className="sm:hidden">Criar</span>
+                    )}
                   </Button>
                 </div>
               </div>
             )}
           </form>
 
-          <div className="mt-6 text-center space-y-4">
-            <p className="text-sm text-muted-foreground">
+          <div className="mt-5 sm:mt-6 text-center space-y-3 sm:space-y-4">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Já tem uma conta?{" "}
               <Link
                 to="/login"
@@ -290,7 +315,7 @@ const Signup = () => {
             </p>
             <Link
               to="/"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors block"
+              className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors block pt-2"
             >
               ← Voltar para home
             </Link>

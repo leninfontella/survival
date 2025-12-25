@@ -25,7 +25,6 @@ import { League } from "@/types/game";
 import { roomAPI } from "@/services/api";
 import { Navbar } from "@/components/Navbar";
 
-// 🔥 FIX: Dados corretos das ligas com rodadas FIXAS
 const leagueOptions = [
   { value: "brasil" as League, label: "🇧🇷 Brasileirão", rounds: 38 },
   { value: "espanha" as League, label: "🇪🇸 La Liga (Espanha)", rounds: 38 },
@@ -50,29 +49,26 @@ export default function AdminCreateRoom() {
     league: "brasil" as League,
     minPlayers: 10,
     entryPrice: 50,
-    totalRounds: 38, // Será atualizado automaticamente
+    totalRounds: 38,
     isPrivate: false,
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  // 🔥 FIX: Atualizar totalRounds automaticamente ao mudar a liga
   const handleLeagueChange = (league: League) => {
     const selectedLeague = leagueOptions.find((l) => l.value === league);
 
     setFormData({
       ...formData,
       league,
-      totalRounds: selectedLeague?.rounds || 38, // 🔥 ATUALIZA AUTOMATICAMENTE
+      totalRounds: selectedLeague?.rounds || 38,
     });
   };
 
-  // 🔥 FIX: Validar totalRounds antes de enviar
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validar se totalRounds está correto para a liga
       const selectedLeague = leagueOptions.find(
         (l) => l.value === formData.league
       );
@@ -127,7 +123,6 @@ export default function AdminCreateRoom() {
     }
   };
 
-  // 🆕 Obter rodadas máximas da liga selecionada
   const selectedLeague = leagueOptions.find((l) => l.value === formData.league);
   const maxRounds = selectedLeague?.rounds || 38;
 
@@ -135,45 +130,45 @@ export default function AdminCreateRoom() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8 mt-20">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 mt-16 sm:mt-20">
         <Link to="/dashboard">
-          <Button variant="ghost" className="mb-6">
+          <Button variant="ghost" className="mb-4 sm:mb-6 text-sm sm:text-base">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar ao Dashboard
+            Voltar
           </Button>
         </Link>
 
         <Card className="max-w-2xl mx-auto border-border/50 bg-card/50 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+          <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
+            <CardTitle className="text-xl sm:text-2xl md:text-3xl font-bold text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
               Criar Nova Sala
             </CardTitle>
-            <CardDescription className="text-center">
+            <CardDescription className="text-center text-xs sm:text-sm">
               Configure os parâmetros da competição
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {/* Privacy Toggle */}
-              <div className="p-4 rounded-lg border-2 border-border bg-muted/50">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5 flex-1">
+              <div className="p-3 sm:p-4 rounded-lg border-2 border-border bg-muted/50">
+                <div className="flex items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-1 flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       {formData.isPrivate ? (
-                        <Lock className="h-5 w-5 text-primary" />
+                        <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                       ) : (
-                        <Unlock className="h-5 w-5 text-muted-foreground" />
+                        <Unlock className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground shrink-0" />
                       )}
                       <Label
                         htmlFor="privacy"
-                        className="text-base font-semibold cursor-pointer"
+                        className="text-sm sm:text-base font-semibold cursor-pointer"
                       >
                         {formData.isPrivate ? "Sala Privada" : "Sala Pública"}
                       </Label>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-tight">
                       {formData.isPrivate
-                        ? "Apenas você e jogadores convidados poderão ver e entrar nesta sala"
+                        ? "Apenas você e jogadores convidados poderão ver e entrar"
                         : "Qualquer pessoa pode ver e entrar nesta sala"}
                     </p>
                   </div>
@@ -184,55 +179,72 @@ export default function AdminCreateRoom() {
                       setFormData({ ...formData, isPrivate: checked })
                     }
                     disabled={isLoading}
+                    className="shrink-0"
                   />
                 </div>
               </div>
 
               {/* Liga */}
               <div className="space-y-2">
-                <Label htmlFor="league">Liga / Campeonato</Label>
+                <Label htmlFor="league" className="text-sm sm:text-base">
+                  Liga / Campeonato
+                </Label>
                 <Select
                   value={formData.league}
                   onValueChange={handleLeagueChange}
                   disabled={isLoading}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="text-sm sm:text-base">
                     <SelectValue placeholder="Selecione a liga" />
                   </SelectTrigger>
                   <SelectContent>
                     {leagueOptions.map((league) => (
-                      <SelectItem key={league.value} value={league.value}>
-                        {league.label} • {league.rounds} rodadas
+                      <SelectItem
+                        key={league.value}
+                        value={league.value}
+                        className="text-sm sm:text-base"
+                      >
+                        <span className="block sm:hidden">
+                          {league.label.split("(")[0].trim()}
+                        </span>
+                        <span className="hidden sm:block">
+                          {league.label} • {league.rounds} rodadas
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Info className="h-3 w-3" />
-                  Esta liga tem {maxRounds} rodadas no campeonato real
+                  <Info className="h-3 w-3 shrink-0" />
+                  <span>Esta liga tem {maxRounds} rodadas</span>
                 </p>
               </div>
 
               {/* Nome da Sala */}
               <div className="space-y-2">
-                <Label htmlFor="name">Nome da Sala</Label>
+                <Label htmlFor="name" className="text-sm sm:text-base">
+                  Nome da Sala
+                </Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  placeholder="Ex: Survivor Premier League 2024"
+                  placeholder="Ex: Survivor Premier 2024"
                   required
                   disabled={isLoading}
+                  className="text-sm sm:text-base"
                 />
               </div>
 
               {/* Grid de Configurações */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Jogadores Mínimos */}
                 <div className="space-y-2">
-                  <Label htmlFor="minPlayers">Jogadores Mínimos</Label>
+                  <Label htmlFor="minPlayers" className="text-sm sm:text-base">
+                    Jogadores Mínimos
+                  </Label>
                   <Input
                     id="minPlayers"
                     type="number"
@@ -246,12 +258,15 @@ export default function AdminCreateRoom() {
                     }
                     required
                     disabled={isLoading}
+                    className="text-sm sm:text-base"
                   />
                 </div>
 
                 {/* Valor de Entrada */}
                 <div className="space-y-2">
-                  <Label htmlFor="entryPrice">Valor de Entrada (R$)</Label>
+                  <Label htmlFor="entryPrice" className="text-sm sm:text-base">
+                    Valor de Entrada (R$)
+                  </Label>
                   <Input
                     id="entryPrice"
                     type="number"
@@ -265,25 +280,27 @@ export default function AdminCreateRoom() {
                     }
                     required
                     disabled={isLoading}
+                    className="text-sm sm:text-base"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Cada jogador paga este valor para participar
+                    Cada jogador paga este valor
                   </p>
                 </div>
               </div>
 
-              {/* 🔥 FIX: Total de Rodadas - AUTOMÁTICO ou com limite */}
+              {/* Total de Rodadas */}
               <div className="space-y-2">
-                <Label htmlFor="totalRounds">Total de Rodadas</Label>
+                <Label htmlFor="totalRounds" className="text-sm sm:text-base">
+                  Total de Rodadas
+                </Label>
                 <Input
                   id="totalRounds"
                   type="number"
                   min="1"
-                  max={maxRounds} // 🔥 LIMITAR ao máximo da liga
+                  max={maxRounds}
                   value={formData.totalRounds}
                   onChange={(e) => {
                     const value = parseInt(e.target.value);
-                    // 🔥 Validar se não excede o máximo
                     if (value <= maxRounds) {
                       setFormData({
                         ...formData,
@@ -299,53 +316,63 @@ export default function AdminCreateRoom() {
                   }}
                   required
                   disabled={isLoading}
+                  className="text-sm sm:text-base"
                 />
                 <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                  <p>
-                    Defina quantas rodadas serão jogadas (máximo: {maxRounds}{" "}
-                    rodadas da {selectedLeague?.label})
+                  <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <p className="leading-tight">
+                    Máximo: {maxRounds} rodadas da{" "}
+                    {selectedLeague?.label.split("(")[0].trim()}
                   </p>
                 </div>
               </div>
 
               {/* Resumo */}
-              <div className="pt-4 space-y-4">
-                <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                  <h4 className="font-semibold text-primary mb-2">Resumo</h4>
-                  <div className="space-y-1 text-sm">
+              <div className="pt-2 sm:pt-4 space-y-3 sm:space-y-4">
+                <div className="p-3 sm:p-4 rounded-lg bg-primary/10 border border-primary/20">
+                  <h4 className="font-semibold text-primary mb-2 text-sm sm:text-base">
+                    Resumo
+                  </h4>
+                  <div className="space-y-1 text-xs sm:text-sm">
                     <p className="flex items-center gap-2">
                       {formData.isPrivate ? (
                         <>
-                          <Lock className="h-3.5 w-3.5" />
+                          <Lock className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                           <span>
                             Privacidade: <strong>Privada</strong>
                           </span>
                         </>
                       ) : (
                         <>
-                          <Unlock className="h-3.5 w-3.5" />
+                          <Unlock className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                           <span>
                             Privacidade: <strong>Pública</strong>
                           </span>
                         </>
                       )}
                     </p>
-                    <p>
+                    <p className="break-words">
                       • Liga:{" "}
-                      {
-                        leagueOptions.find((l) => l.value === formData.league)
-                          ?.label
-                      }
+                      <span className="inline sm:hidden">
+                        {leagueOptions
+                          .find((l) => l.value === formData.league)
+                          ?.label.split("(")[0]
+                          .trim()}
+                      </span>
+                      <span className="hidden sm:inline">
+                        {
+                          leagueOptions.find((l) => l.value === formData.league)
+                            ?.label
+                        }
+                      </span>
                     </p>
                     <p>• Entrada: R$ {formData.entryPrice.toFixed(2)}</p>
                     <p>• Mínimo: {formData.minPlayers} jogadores</p>
                     <p>
                       • Duração: {formData.totalRounds} de {maxRounds} rodadas
-                      disponíveis
                     </p>
                     <p>
-                      • Prêmio inicial: R${" "}
+                      • Prêmio: R${" "}
                       {(
                         formData.minPlayers * formData.entryPrice
                       ).toLocaleString("pt-BR", {
@@ -358,14 +385,14 @@ export default function AdminCreateRoom() {
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full text-sm sm:text-base"
                   size="lg"
                   disabled={isLoading}
                 >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Criando Sala...
+                      Criando...
                     </>
                   ) : (
                     <>
@@ -374,7 +401,10 @@ export default function AdminCreateRoom() {
                       ) : (
                         <Unlock className="mr-2 h-4 w-4" />
                       )}
-                      Criar Sala e Entrar
+                      <span className="hidden sm:inline">
+                        Criar Sala e Entrar
+                      </span>
+                      <span className="sm:hidden">Criar e Entrar</span>
                     </>
                   )}
                 </Button>

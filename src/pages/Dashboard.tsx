@@ -81,13 +81,11 @@ export default function Dashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Buscar userId ao carregar
   useEffect(() => {
     const userId = authAPI.getCurrentUserId();
     setCurrentUserId(userId);
   }, []);
 
-  // Buscar salas ao carregar
   useEffect(() => {
     const fetchRooms = async () => {
       setIsLoading(true);
@@ -127,7 +125,6 @@ export default function Dashboard() {
           description: "A sala foi removida com sucesso.",
         });
 
-        // Atualizar lista de salas
         setRooms(rooms.filter((r) => r._id !== roomToDelete));
         setRoomToDelete(null);
       }
@@ -165,7 +162,6 @@ export default function Dashboard() {
     const Icon = config.icon;
     const shareLink = `${window.location.origin}/join-room/${room._id}`;
 
-    // Extrair nome do criador
     const creatorName =
       typeof room.createdBy === "string" ? "Admin" : room.createdBy.name;
 
@@ -191,28 +187,29 @@ export default function Dashboard() {
 
     return (
       <Card className="hover:border-primary/50 transition-all hover:scale-[1.02] cursor-pointer border-border/50 bg-card/50 backdrop-blur">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1 flex-1">
+        <CardHeader className="pb-3 px-4 pt-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1.5 flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <CardTitle className="text-xl">{room.name}</CardTitle>
+                <CardTitle className="text-lg sm:text-xl break-words">
+                  {room.name}
+                </CardTitle>
                 {room.isPrivate && (
                   <Badge
                     variant="secondary"
-                    className="bg-amber-500/20 text-amber-700 border-amber-500/30"
+                    className="bg-amber-500/20 text-amber-700 border-amber-500/30 text-xs shrink-0"
                   >
                     <Lock className="w-3 h-3 mr-1" />
                     Privada
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {leagueNames[room.league]}
               </p>
-              {/* Nome do Administrador */}
-              <div className="flex items-center gap-1.5 mt-2">
-                <Crown className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary shrink-0" />
+                <span className="text-xs text-muted-foreground truncate">
                   Admin:{" "}
                   <span className="text-primary font-medium">
                     {creatorName}
@@ -220,23 +217,25 @@ export default function Dashboard() {
                 </span>
               </div>
             </div>
-            <Badge className={`${config.color} text-white border-0 shrink-0`}>
+            <Badge
+              className={`${config.color} text-white border-0 shrink-0 text-xs`}
+            >
               <Icon className="w-3 h-3 mr-1" />
-              {config.label}
+              <span className="hidden sm:inline">{config.label}</span>
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3 text-sm">
+        <CardContent className="space-y-3 px-4 pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
             <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-primary" />
+              <Trophy className="w-4 h-4 text-primary shrink-0" />
               <span className="text-muted-foreground">Prêmio:</span>
               <span className="font-semibold">
                 R$ {room.prizePool.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <UserCircle className="w-4 h-4 text-primary" />
+              <UserCircle className="w-4 h-4 text-primary shrink-0" />
               <span className="text-muted-foreground">Jogadores:</span>
               <span className="font-semibold">
                 {room.players.length}/{room.minPlayers}
@@ -244,7 +243,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-sm pt-2 border-t border-border/50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm pt-2 border-t border-border/50">
             <span className="text-muted-foreground">
               Rodada {room.currentRound} de {room.totalRounds}
             </span>
@@ -253,9 +252,8 @@ export default function Dashboard() {
             </span>
           </div>
 
-          {/* Sala pública aguardando - mostrar link */}
           {room.status === "waiting" && !room.isPrivate && (
-            <div className="mt-3 p-2 bg-muted/50 rounded-md border border-border/50">
+            <div className="mt-3 p-2 sm:p-3 bg-muted/50 rounded-md border border-border/50">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground mb-1">
@@ -267,7 +265,7 @@ export default function Dashboard() {
                   size="sm"
                   variant="ghost"
                   onClick={handleCopyLink}
-                  className="shrink-0"
+                  className="shrink-0 h-8 w-8 p-0"
                 >
                   {copiedRoomId === room._id ? (
                     <Check className="w-4 h-4 text-green-500" />
@@ -279,11 +277,10 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Sala privada aguardando - aviso para admin */}
           {room.isPrivate && room.status === "waiting" && (
-            <div className="mt-3 p-3 bg-amber-500/10 rounded-md border border-amber-500/30">
-              <div className="flex items-center gap-2 mb-2">
-                <Lock className="w-4 h-4 text-amber-600" />
+            <div className="mt-3 p-2.5 sm:p-3 bg-amber-500/10 rounded-md border border-amber-500/30">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
                 <p className="text-xs font-semibold text-amber-700">
                   Sala Privada
                 </p>
@@ -294,12 +291,11 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Sala privada ativa/finalizada - aviso de convite necessário */}
           {room.isPrivate &&
             (room.status === "active" || room.status === "finished") && (
-              <div className="mt-3 p-3 bg-primary/10 rounded-md border border-primary/30">
+              <div className="mt-3 p-2.5 sm:p-3 bg-primary/10 rounded-md border border-primary/30">
                 <div className="flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-primary" />
+                  <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
                   <p className="text-xs text-primary font-medium">
                     Sala Privada - Convite necessário
                   </p>
@@ -308,7 +304,7 @@ export default function Dashboard() {
             )}
 
           <Button
-            className="w-full mt-2"
+            className="w-full mt-2 text-sm"
             onClick={handleRoomClick}
             variant={room.status === "waiting" ? "default" : "outline"}
           >
@@ -321,10 +317,9 @@ export default function Dashboard() {
               : "Ver Resultados"}
           </Button>
 
-          {/* Botão de Excluir (apenas para criador) */}
           {isRoomCreator(room) && room.status !== "active" && (
             <Button
-              className="w-full mt-2"
+              className="w-full mt-2 text-sm"
               variant="destructive"
               size="sm"
               onClick={(e) => {
@@ -343,9 +338,11 @@ export default function Dashboard() {
 
   const EmptyState = ({ message }: { message: string }) => (
     <Card className="border-dashed border-2 border-border/50 bg-card/30">
-      <CardContent className="flex flex-col items-center justify-center py-12">
-        <Trophy className="w-16 h-16 text-muted-foreground/50 mb-4" />
-        <p className="text-muted-foreground text-center">{message}</p>
+      <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 px-4">
+        <Trophy className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground/50 mb-3 sm:mb-4" />
+        <p className="text-sm sm:text-base text-muted-foreground text-center">
+          {message}
+        </p>
       </CardContent>
     </Card>
   );
@@ -354,11 +351,13 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
         <Navbar />
-        <div className="container mx-auto px-4 py-8 mt-20">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center space-y-4">
-              <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">Carregando salas...</p>
+        <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 mt-16 sm:mt-20">
+          <div className="flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 animate-spin text-primary mx-auto" />
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Carregando salas...
+              </p>
             </div>
           </div>
         </div>
@@ -370,18 +369,20 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8 mt-20">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 mt-16 sm:mt-20">
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="mb-6 sm:mb-8">
           <Link to="/admin/create-room">
             <Card className="hover:border-primary/50 transition-all hover:scale-[1.02] cursor-pointer border-border/50 bg-gradient-to-br from-primary/10 to-primary/5">
-              <CardContent className="flex items-center gap-4 py-6">
-                <div className="p-3 rounded-full bg-primary/20">
-                  <Plus className="w-6 h-6 text-primary" />
+              <CardContent className="flex items-center gap-3 sm:gap-4 py-4 sm:py-6 px-4">
+                <div className="p-2.5 sm:p-3 rounded-full bg-primary/20 shrink-0">
+                  <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-lg">Criar Nova Sala</h3>
-                  <p className="text-sm text-muted-foreground">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base sm:text-lg">
+                    Criar Nova Sala
+                  </h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Configure uma nova competição
                   </p>
                 </div>
@@ -391,26 +392,38 @@ export default function Dashboard() {
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
           <Card className="border-border/50 bg-card/50 backdrop-blur">
-            <CardContent className="pt-6 text-center">
-              <Clock className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-              <p className="text-3xl font-bold">{openRooms.length}</p>
-              <p className="text-sm text-muted-foreground">Salas Abertas</p>
+            <CardContent className="pt-4 sm:pt-6 pb-4 px-2 sm:px-4 text-center">
+              <Clock className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1.5 sm:mb-2 text-yellow-500" />
+              <p className="text-xl sm:text-3xl font-bold">
+                {openRooms.length}
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Abertas
+              </p>
             </CardContent>
           </Card>
           <Card className="border-border/50 bg-card/50 backdrop-blur">
-            <CardContent className="pt-6 text-center">
-              <Play className="w-8 h-8 mx-auto mb-2 text-green-500" />
-              <p className="text-3xl font-bold">{activeRooms.length}</p>
-              <p className="text-sm text-muted-foreground">Em Andamento</p>
+            <CardContent className="pt-4 sm:pt-6 pb-4 px-2 sm:px-4 text-center">
+              <Play className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1.5 sm:mb-2 text-green-500" />
+              <p className="text-xl sm:text-3xl font-bold">
+                {activeRooms.length}
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Ativas
+              </p>
             </CardContent>
           </Card>
           <Card className="border-border/50 bg-card/50 backdrop-blur">
-            <CardContent className="pt-6 text-center">
-              <Flag className="w-8 h-8 mx-auto mb-2 text-gray-500" />
-              <p className="text-3xl font-bold">{finishedRooms.length}</p>
-              <p className="text-sm text-muted-foreground">Finalizadas</p>
+            <CardContent className="pt-4 sm:pt-6 pb-4 px-2 sm:px-4 text-center">
+              <Flag className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1.5 sm:mb-2 text-gray-500" />
+              <p className="text-xl sm:text-3xl font-bold">
+                {finishedRooms.length}
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Finalizadas
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -422,23 +435,29 @@ export default function Dashboard() {
             setActiveTab(v as "waiting" | "active" | "finished")
           }
         >
-          <TabsList className="grid w-full grid-cols-3 mb-6">
-            <TabsTrigger value="waiting">
-              Abertas ({openRooms.length})
+          <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6 h-auto">
+            <TabsTrigger value="waiting" className="text-xs sm:text-sm py-2">
+              <span className="hidden sm:inline">Abertas</span>
+              <span className="sm:hidden">Abertas</span>
+              <span className="ml-1">({openRooms.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="active">
-              Em Andamento ({activeRooms.length})
+            <TabsTrigger value="active" className="text-xs sm:text-sm py-2">
+              <span className="hidden sm:inline">Em Andamento</span>
+              <span className="sm:hidden">Ativas</span>
+              <span className="ml-1">({activeRooms.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="finished">
-              Finalizadas ({finishedRooms.length})
+            <TabsTrigger value="finished" className="text-xs sm:text-sm py-2">
+              <span className="hidden sm:inline">Finalizadas</span>
+              <span className="sm:hidden">Finalizadas</span>
+              <span className="ml-1">({finishedRooms.length})</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="waiting" className="space-y-4">
+          <TabsContent value="waiting" className="space-y-3 sm:space-y-4">
             {openRooms.length === 0 ? (
               <EmptyState message="Nenhuma sala aguardando jogadores no momento" />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {openRooms.map((room) => (
                   <RoomCard key={room._id} room={room} />
                 ))}
@@ -446,11 +465,11 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="active" className="space-y-4">
+          <TabsContent value="active" className="space-y-3 sm:space-y-4">
             {activeRooms.length === 0 ? (
               <EmptyState message="Nenhuma sala em andamento no momento" />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {activeRooms.map((room) => (
                   <RoomCard key={room._id} room={room} />
                 ))}
@@ -458,11 +477,11 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          <TabsContent value="finished" className="space-y-4">
+          <TabsContent value="finished" className="space-y-3 sm:space-y-4">
             {finishedRooms.length === 0 ? (
               <EmptyState message="Nenhuma sala finalizada ainda" />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {finishedRooms.map((room) => (
                   <RoomCard key={room._id} room={room} />
                 ))}
@@ -477,22 +496,27 @@ export default function Dashboard() {
         open={!!roomToDelete}
         onOpenChange={() => setRoomToDelete(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Sala?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">
+              Excluir Sala?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
               Esta ação não pode ser desfeita. A sala e todos os dados dos
               jogadores serão permanentemente removidos.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel
+              disabled={isDeleting}
+              className="w-full sm:w-auto"
+            >
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteRoom}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
             >
               {isDeleting ? (
                 <>
