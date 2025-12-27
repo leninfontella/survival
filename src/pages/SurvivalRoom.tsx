@@ -1163,7 +1163,7 @@ export default function SurvivalRoom() {
                             }}
                             className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-amber-500 flex items-center justify-center shadow-lg flex-shrink-0"
                           >
-                            <Clock className="h-6 w-6 sm:h-7 sm:h-7 text-white" />
+                            <Clock className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
                           </motion.div>
                           <div className="flex-1 min-w-0">
                             <h3 className="text-base sm:text-lg md:text-xl font-bold text-amber-600 mb-1">
