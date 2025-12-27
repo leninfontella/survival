@@ -1508,7 +1508,7 @@ export default function SurvivalRoom() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 sm:pt-6">
-                      <div className="space-y-2 sm:space-y-3 max-h-[300px] sm:max-h-[400px] overflow-y-auto overscroll-contain">
+                      <div className="space-y-2 sm:space-y-3 max-h-[300px] sm:max-h-[400px] overflow-y-auto overscroll-contain scrollbar-hide">
                         {playersWithSelection.length === 0 ? (
                           <p className="text-center text-sm text-muted-foreground py-6 sm:py-8">
                             Nenhum jogador selecionou ainda
