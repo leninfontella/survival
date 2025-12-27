@@ -47,7 +47,6 @@ export default function SelectTeam() {
   const [usedTeams, setUsedTeams] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Debug: Verificar roomId
   useEffect(() => {
     console.log("🔍 SelectTeam carregado");
     console.log("🔍 RoomId da URL:", roomId);
@@ -55,10 +54,8 @@ export default function SelectTeam() {
     console.log("🎯 Total de times disponíveis:", teams.length);
   }, [roomId, teams]);
 
-  // Buscar dados da sala
   useEffect(() => {
     const fetchRoom = async () => {
-      // Verificação mais robusta do roomId
       if (!roomId || roomId === "undefined" || roomId.trim() === "") {
         console.error("❌ RoomId inválido:", roomId);
         toast({
@@ -74,7 +71,6 @@ export default function SelectTeam() {
       try {
         console.log("🔍 Buscando sala com ID:", roomId);
 
-        // Buscar dados da sala
         const roomResponse = await roomAPI.getById(roomId);
         console.log("📦 Resposta da sala:", roomResponse);
 
@@ -83,7 +79,6 @@ export default function SelectTeam() {
           console.log("✅ Liga da sala:", roomResponse.data.league);
         }
 
-        // Buscar times já usados
         const usedTeamsResponse = await roomAPI.getUsedTeams(roomId);
         console.log("📦 Resposta times usados:", usedTeamsResponse);
 
@@ -130,7 +125,6 @@ export default function SelectTeam() {
         teamName: selectedTeam.name,
       });
 
-      // Chamar API para salvar a seleção do time
       const response = await roomAPI.selectTeam(
         roomId,
         selectedTeamId,
@@ -162,7 +156,6 @@ export default function SelectTeam() {
 
   const isTeamUsed = (teamId: string) => usedTeams.includes(teamId);
 
-  // 🎯 CORREÇÃO: Usar times do contexto baseado na liga da sala com useMemo
   const availableTeams: Team[] = useMemo(() => {
     return roomData ? getTeamsByLeague(roomData.league) : [];
   }, [roomData, getTeamsByLeague]);
@@ -184,11 +177,11 @@ export default function SelectTeam() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
-        <Card className="max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm">
           <CardContent className="pt-6 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Carregando sala...</p>
+            <p className="text-sm text-muted-foreground">Carregando sala...</p>
           </CardContent>
         </Card>
       </div>
@@ -197,12 +190,14 @@ export default function SelectTeam() {
 
   if (!roomData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
-        <Card className="max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm">
           <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground mb-4">Sala não encontrada</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Sala não encontrada
+            </p>
             <Link to="/dashboard">
-              <Button>Voltar ao Dashboard</Button>
+              <Button className="w-full">Voltar ao Dashboard</Button>
             </Link>
           </CardContent>
         </Card>
@@ -212,14 +207,14 @@ export default function SelectTeam() {
 
   if (availableTeams.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center">
-        <Card className="max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-card flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm">
           <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Nenhum time disponível para a liga: {roomData.league}
             </p>
             <Link to="/dashboard">
-              <Button>Voltar ao Dashboard</Button>
+              <Button className="w-full">Voltar ao Dashboard</Button>
             </Link>
           </CardContent>
         </Card>
@@ -249,69 +244,86 @@ export default function SelectTeam() {
           />
         </div>
 
-        <div className="container mx-auto px-4 py-8 relative z-10">
+        <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 md:py-8 relative z-10">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
           >
             <Link to={`/survival-room/${roomId}`}>
-              <Button variant="ghost" className="mb-6 hover:bg-primary/10">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mb-3 sm:mb-4 md:mb-6 hover:bg-primary/10"
+              >
+                <ArrowLeft className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm">Voltar</span>
               </Button>
             </Link>
           </motion.div>
 
-          <div className="max-w-6xl mx-auto space-y-6">
-            {/* Header Card */}
+          <div className="max-w-6xl mx-auto space-y-3 sm:space-y-4 md:space-y-6">
+            {/* Header Card - Mobile Optimized */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <Card className="border-primary/30 bg-gradient-to-br from-card/90 via-card/50 to-card/90 backdrop-blur-xl shadow-2xl shadow-primary/10">
-                <CardHeader className="text-center space-y-4 pb-8">
-                  <div className="flex items-center justify-center gap-3">
-                    <Trophy className="h-8 w-8 text-primary animate-pulse" />
-                    <CardTitle className="text-4xl md:text-5xl font-black bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
+              <Card className="border-primary/30 bg-gradient-to-br from-card/90 via-card/50 to-card/90 backdrop-blur-xl shadow-lg sm:shadow-2xl shadow-primary/10">
+                <CardHeader className="text-center space-y-2 sm:space-y-3 md:space-y-4 pb-4 sm:pb-6 md:pb-8 px-3 sm:px-6">
+                  <div className="flex items-center justify-center gap-2 sm:gap-3">
+                    <Trophy className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-primary animate-pulse" />
+                    <CardTitle className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
                       Rodada {roomData.currentRound}
                     </CardTitle>
-                    <Trophy className="h-8 w-8 text-primary animate-pulse" />
+                    <Trophy className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-primary animate-pulse" />
                   </div>
-                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  <p className="text-xs sm:text-sm md:text-base lg:text-lg text-muted-foreground max-w-2xl mx-auto px-2">
                     Escolha o time que você acredita que irá{" "}
                     <span className="text-primary font-bold">VENCER</span> nesta
                     rodada
                   </p>
-                  <div className="flex items-center justify-center gap-4 text-sm flex-wrap">
-                    <Badge variant="outline">Sala: {roomData.name}</Badge>
-                    <Badge variant="outline">Liga: {roomData.league}</Badge>
-                    <Badge variant="outline">
-                      Prêmio: R$ {roomData.prizePool.toFixed(2)}
+                  <div className="flex items-center justify-center gap-2 sm:gap-3 md:gap-4 text-xs flex-wrap px-2">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] sm:text-xs px-2 py-0.5"
+                    >
+                      Sala: {roomData.name}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] sm:text-xs px-2 py-0.5"
+                    >
+                      Liga: {roomData.league}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] sm:text-xs px-2 py-0.5"
+                    >
+                      R$ {roomData.prizePool.toFixed(2)}
                     </Badge>
                   </div>
                 </CardHeader>
               </Card>
             </motion.div>
 
-            {/* Teams Grid */}
+            {/* Teams Grid - Mobile First */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-xl">
-                <CardHeader className="border-b border-border/50">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg sm:shadow-xl">
+                <CardHeader className="border-b border-border/50 px-3 py-3 sm:px-6 sm:py-4">
                   <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-xl">
+                    <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                    <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl">
                       Times Disponíveis ({availableTeams.length})
                     </CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <CardContent className="pt-3 sm:pt-4 md:pt-6 px-2 sm:px-4 md:px-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
                     {availableTeams.map((team, index) => {
                       const used = isTeamUsed(team.id);
                       const selected = selectedTeamId === team.id;
@@ -322,21 +334,21 @@ export default function SelectTeam() {
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ duration: 0.3, delay: index * 0.02 }}
-                          whileHover={!used ? { scale: 1.05, y: -5 } : {}}
-                          whileTap={!used ? { scale: 0.98 } : {}}
+                          whileHover={!used ? { scale: 1.03 } : {}}
+                          whileTap={!used ? { scale: 0.97 } : {}}
                           onClick={() => !used && setSelectedTeamId(team.id)}
                           disabled={used}
                           className={`
-                          relative p-5 rounded-xl border-2 transition-all duration-300 group overflow-hidden
+                          relative p-3 sm:p-4 md:p-5 rounded-lg sm:rounded-xl border-2 transition-all duration-300 group overflow-hidden
                           ${
                             used
                               ? "opacity-40 cursor-not-allowed bg-muted/50"
-                              : "cursor-pointer hover:shadow-xl hover:shadow-primary/20"
+                              : "cursor-pointer active:scale-95 sm:hover:shadow-xl sm:hover:shadow-primary/20"
                           }
                           ${
                             selected
                               ? "border-primary bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-lg shadow-primary/30"
-                              : "border-border/50 bg-gradient-to-br from-card to-background/50 hover:border-primary/50"
+                              : "border-border/50 bg-gradient-to-br from-card to-background/50 active:border-primary/50 sm:hover:border-primary/50"
                           }
                         `}
                         >
@@ -348,21 +360,21 @@ export default function SelectTeam() {
                             />
                           )}
 
-                          <div className="relative flex flex-col items-center gap-4">
+                          <div className="relative flex flex-col items-center gap-2 sm:gap-3 md:gap-4">
                             <div
                               className={`
-                            w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300
+                            w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-300
                             ${
                               selected
-                                ? "bg-primary/20 ring-4 ring-primary/30"
-                                : "bg-background/50 group-hover:bg-primary/10"
+                                ? "bg-primary/20 ring-2 sm:ring-4 ring-primary/30"
+                                : "bg-background/50 group-active:bg-primary/10 sm:group-hover:bg-primary/10"
                             }
                           `}
                             >
                               <img
                                 src={team.logo}
                                 alt={team.name}
-                                className="w-14 h-14 object-contain"
+                                className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 object-contain"
                                 onError={(e) => {
                                   e.currentTarget.src =
                                     "https://via.placeholder.com/56x56?text=" +
@@ -373,11 +385,11 @@ export default function SelectTeam() {
 
                             <span
                               className={`
-                            font-bold text-center text-sm transition-colors
+                            font-bold text-center text-[10px] leading-tight sm:text-xs md:text-sm transition-colors line-clamp-2
                             ${
                               selected
                                 ? "text-primary"
-                                : "text-foreground group-hover:text-primary"
+                                : "text-foreground group-active:text-primary sm:group-hover:text-primary"
                             }
                           `}
                             >
@@ -387,10 +399,10 @@ export default function SelectTeam() {
                             {used && (
                               <Badge
                                 variant="destructive"
-                                className="absolute -top-2 -right-2 flex items-center gap-1 shadow-lg"
+                                className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 flex items-center gap-0.5 sm:gap-1 shadow-lg text-[8px] sm:text-xs px-1 sm:px-2 py-0 sm:py-0.5"
                               >
-                                <X className="h-3 w-3" />
-                                Usado
+                                <X className="h-2 w-2 sm:h-3 sm:w-3" />
+                                <span className="hidden sm:inline">Usado</span>
                               </Badge>
                             )}
 
@@ -398,9 +410,9 @@ export default function SelectTeam() {
                               <motion.div
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                className="absolute -top-2 -right-2 flex items-center justify-center w-8 h-8 rounded-full bg-primary shadow-lg shadow-primary/50"
+                                className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary shadow-lg shadow-primary/50"
                               >
-                                <Check className="h-5 w-5 text-primary-foreground" />
+                                <Check className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-primary-foreground" />
                               </motion.div>
                             )}
                           </div>
@@ -409,22 +421,26 @@ export default function SelectTeam() {
                     })}
                   </div>
 
-                  {/* Rules Card */}
+                  {/* Rules Card - Mobile Optimized */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
-                    className="mt-8 p-6 rounded-xl bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border-2 border-primary/20 shadow-lg"
+                    className="mt-4 sm:mt-6 md:mt-8 p-3 sm:p-4 md:p-6 rounded-lg sm:rounded-xl bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border-2 border-primary/20 shadow-lg"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 text-2xl">⚠️</div>
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="flex-shrink-0 text-lg sm:text-xl md:text-2xl">
+                        ⚠️
+                      </div>
                       <div>
-                        <h4 className="font-bold text-primary mb-3 text-lg">
+                        <h4 className="font-bold text-primary mb-2 sm:mb-3 text-xs sm:text-sm md:text-base lg:text-lg">
                           Regras Importantes:
                         </h4>
-                        <ul className="space-y-2 text-sm">
-                          <li className="flex items-start gap-2">
-                            <span className="text-primary font-bold">•</span>
+                        <ul className="space-y-1.5 sm:space-y-2 text-[10px] sm:text-xs md:text-sm">
+                          <li className="flex items-start gap-1.5 sm:gap-2">
+                            <span className="text-primary font-bold flex-shrink-0">
+                              •
+                            </span>
                             <span>
                               Você só pode escolher cada time{" "}
                               <span className="text-primary font-bold">
@@ -433,8 +449,10 @@ export default function SelectTeam() {
                               durante todo o campeonato
                             </span>
                           </li>
-                          <li className="flex items-start gap-2">
-                            <span className="text-primary font-bold">•</span>
+                          <li className="flex items-start gap-1.5 sm:gap-2">
+                            <span className="text-primary font-bold flex-shrink-0">
+                              •
+                            </span>
                             <span>
                               Se seu time{" "}
                               <span className="text-primary font-bold">
@@ -443,8 +461,8 @@ export default function SelectTeam() {
                               , você avança para a próxima rodada
                             </span>
                           </li>
-                          <li className="flex items-start gap-2">
-                            <span className="text-destructive font-bold">
+                          <li className="flex items-start gap-1.5 sm:gap-2">
+                            <span className="text-destructive font-bold flex-shrink-0">
                               •
                             </span>
                             <span>
@@ -460,7 +478,7 @@ export default function SelectTeam() {
                     </div>
                   </motion.div>
 
-                  {/* Confirm Button */}
+                  {/* Confirm Button - Mobile Optimized */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -470,17 +488,21 @@ export default function SelectTeam() {
                       onClick={handleConfirm}
                       disabled={!selectedTeamId || isSaving}
                       size="lg"
-                      className="w-full mt-6 text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300"
+                      className="w-full mt-4 sm:mt-5 md:mt-6 text-sm sm:text-base md:text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 h-11 sm:h-12 md:h-14"
                     >
                       {isSaving ? (
                         <>
-                          <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                          Salvando...
+                          <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 animate-spin" />
+                          <span className="text-xs sm:text-sm md:text-base">
+                            Salvando...
+                          </span>
                         </>
                       ) : (
                         <>
-                          <Check className="mr-2 h-6 w-6" />
-                          Confirmar Escolha
+                          <Check className="mr-2 h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                          <span className="text-xs sm:text-sm md:text-base">
+                            Confirmar Escolha
+                          </span>
                         </>
                       )}
                     </Button>
@@ -489,21 +511,21 @@ export default function SelectTeam() {
               </Card>
             </motion.div>
 
-            {/* Used Teams Card */}
+            {/* Used Teams Card - Mobile Optimized */}
             {usedTeams.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-xl">
-                  <CardHeader className="border-b border-border/50">
-                    <CardTitle className="text-xl">
+                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg sm:shadow-xl">
+                  <CardHeader className="border-b border-border/50 px-3 py-3 sm:px-6 sm:py-4">
+                    <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl">
                       Seus Times Já Usados ({usedTeams.length})
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-wrap gap-3">
+                  <CardContent className="pt-3 sm:pt-4 md:pt-6 px-3 sm:px-4 md:px-6">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2 md:gap-3">
                       {usedTeams.map((teamId, index) => {
                         const team = availableTeams.find(
                           (t) => t.id === teamId
@@ -517,19 +539,21 @@ export default function SelectTeam() {
                           >
                             <Badge
                               variant="secondary"
-                              className="text-sm py-2 px-4 flex items-center gap-2"
+                              className="text-[10px] sm:text-xs md:text-sm py-1 sm:py-1.5 md:py-2 px-2 sm:px-3 md:px-4 flex items-center gap-1 sm:gap-1.5 md:gap-2"
                             >
                               <img
                                 src={team.logo}
                                 alt={team.name}
-                                className="w-5 h-5 object-contain"
+                                className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 object-contain"
                                 onError={(e) => {
                                   e.currentTarget.src =
                                     "https://via.placeholder.com/20x20?text=" +
                                     team.name.charAt(0);
                                 }}
                               />
-                              {team.name}
+                              <span className="truncate max-w-[100px] sm:max-w-none">
+                                {team.name}
+                              </span>
                             </Badge>
                           </motion.div>
                         ) : null;

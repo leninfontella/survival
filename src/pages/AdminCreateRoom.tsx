@@ -130,7 +130,7 @@ export default function AdminCreateRoom() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-card">
       <Navbar />
 
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 mt-16 sm:mt-20">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 mt-16 sm:mt-20 max-w-2xl">
         <Link to="/dashboard">
           <Button variant="ghost" className="mb-4 sm:mb-6 text-sm sm:text-base">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -138,7 +138,7 @@ export default function AdminCreateRoom() {
           </Button>
         </Link>
 
-        <Card className="max-w-2xl mx-auto border-border/50 bg-card/50 backdrop-blur">
+        <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
             <CardTitle className="text-xl sm:text-2xl md:text-3xl font-bold text-center bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
               Criar Nova Sala
@@ -271,6 +271,7 @@ export default function AdminCreateRoom() {
                     id="entryPrice"
                     type="number"
                     min="1"
+                    step="0.01"
                     value={formData.entryPrice}
                     onChange={(e) =>
                       setFormData({
@@ -353,33 +354,46 @@ export default function AdminCreateRoom() {
                     </p>
                     <p className="break-words">
                       • Liga:{" "}
-                      <span className="inline sm:hidden">
-                        {leagueOptions
-                          .find((l) => l.value === formData.league)
-                          ?.label.split("(")[0]
-                          .trim()}
-                      </span>
-                      <span className="hidden sm:inline">
-                        {
-                          leagueOptions.find((l) => l.value === formData.league)
-                            ?.label
-                        }
-                      </span>
-                    </p>
-                    <p>• Entrada: R$ {formData.entryPrice.toFixed(2)}</p>
-                    <p>• Mínimo: {formData.minPlayers} jogadores</p>
-                    <p>
-                      • Duração: {formData.totalRounds} de {maxRounds} rodadas
+                      <strong>
+                        <span className="inline sm:hidden">
+                          {leagueOptions
+                            .find((l) => l.value === formData.league)
+                            ?.label.split("(")[0]
+                            .trim()}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {
+                            leagueOptions.find(
+                              (l) => l.value === formData.league
+                            )?.label
+                          }
+                        </span>
+                      </strong>
                     </p>
                     <p>
-                      • Prêmio: R${" "}
-                      {(
-                        formData.minPlayers * formData.entryPrice
-                      ).toLocaleString("pt-BR", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                      • Entrada:{" "}
+                      <strong>R$ {formData.entryPrice.toFixed(2)}</strong>
                     </p>
+                    <p>
+                      • Mínimo: <strong>{formData.minPlayers} jogadores</strong>
+                    </p>
+                    <p>
+                      • Duração:{" "}
+                      <strong>
+                        {formData.totalRounds} de {maxRounds} rodadas
+                      </strong>
+                    </p>
+                    <div className="pt-1.5 mt-1.5 border-t border-primary/20">
+                      <p className="text-primary font-semibold">
+                        💰 Prêmio inicial: R${" "}
+                        {(
+                          formData.minPlayers * formData.entryPrice
+                        ).toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -410,6 +424,52 @@ export default function AdminCreateRoom() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Info Card */}
+        <Card className="mt-4 border-border/30 bg-muted/30">
+          <CardContent className="pt-4 pb-4">
+            <div className="space-y-2">
+              <h4 className="font-semibold text-sm sm:text-base flex items-center gap-2">
+                {formData.isPrivate ? (
+                  <>
+                    <Lock className="h-4 w-4 text-primary" />
+                    Como funcionam salas privadas?
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="h-4 w-4 text-muted-foreground" />
+                    Como funcionam salas públicas?
+                  </>
+                )}
+              </h4>
+              <ul className="text-xs sm:text-sm text-muted-foreground space-y-1.5 leading-relaxed">
+                {formData.isPrivate ? (
+                  <>
+                    <li>
+                      • Apenas você e jogadores convidados podem ver esta sala
+                    </li>
+                    <li>• A sala não aparece na lista pública do dashboard</li>
+                    <li>
+                      • Você receberá um link de convite para compartilhar
+                    </li>
+                    <li>
+                      • Jogadores precisam estar logados para entrar com o link
+                    </li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Qualquer pessoa pode ver esta sala no dashboard</li>
+                    <li>
+                      • Jogadores podem entrar sem login (apenas com nome)
+                    </li>
+                    <li>• A sala aparece na lista pública de salas ativas</li>
+                    <li>• Você ainda pode compartilhar o link diretamente</li>
+                  </>
+                )}
+              </ul>
+            </div>
           </CardContent>
         </Card>
       </div>

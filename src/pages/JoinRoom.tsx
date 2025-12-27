@@ -130,15 +130,8 @@ export default function JoinRoom() {
           }
 
           const room = response.data as RoomData;
-          const previousStatus = roomData?.status;
 
           console.log("📦 Dados da sala carregados:", room);
-          console.log(
-            "📊 Status anterior:",
-            previousStatus,
-            "| Status atual:",
-            room.status
-          );
 
           const userId = authAPI.getCurrentUserId();
           console.log("👤 UserId atual:", userId);
@@ -164,21 +157,8 @@ export default function JoinRoom() {
               hasJoined: !!playerInRoom,
               isReady: playerInRoom?.isReady,
               status: room.status,
-              previousStatus,
               players: room.players.length,
             });
-
-            if (room.status === "active") {
-              if (
-                (!previousStatus && !roomData) ||
-                previousStatus === "waiting"
-              ) {
-                console.log("🚀 Sala ativa detectada! Mostrando modal...");
-                setShowStartingModal(true);
-                setRoomData(room);
-                return;
-              }
-            }
           }
 
           setRoomData(room);
@@ -223,7 +203,7 @@ export default function JoinRoom() {
     };
 
     fetchRoom();
-  }, [roomId, roomData]);
+  }, [roomId]);
 
   const handleRefresh = async () => {
     if (!roomId || isRefreshing) return;
